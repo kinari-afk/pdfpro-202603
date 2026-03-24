@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Multi-Tool Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PDF作成・編集 -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <!-- PDFレンダリング(プレビュー用) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <!-- ZIP圧縮 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.2s ease; }
+        .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; }
+        .file-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .file-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .tab-btn.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: 700; }
+        canvas { max-width: 100%; height: auto; border-radius: 4px; }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+    <div class="max-w-5xl mx-auto py-10 px-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-extrabold tracking-tight mb-2">PDFマルチツール <span class="text-blue-600">Pro</span></h1>
+            <p class="text-slate-500 text-sm">分割・結合・回転・画像変換をブラウザのみで完結（サーバー送信なし）</p>
+            <p class="text-slate-400 text-xs mt-1">App creator：KINARI</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200 mb-8 bg-white rounded-t-xl overflow-hidden shadow-sm">
+            <button onclick="setMode('merge')" id="tab-merge" class="tab-btn active flex-1 py-4 text-center text-sm font-medium transition-all">結合 / 並べ替え</button>
+            <button onclick="setMode('split')" id="tab-split" class="tab-btn flex-1 py-4 text-center text-sm font-medium transition-all">分割</button>
+            <button onclick="setMode('img2pdf')" id="tab-img2pdf" class="tab-btn flex-1 py-4 text-center text-sm font-medium transition-all">画像からPDF</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Controls & Upload -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 class="font-bold mb-4 flex items-center">
+                        <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs mr-2">1</span>
+                        ファイルの追加
+                    </h2>
+                    <div id="dropZone" class="drop-zone rounded-xl p-8 text-center cursor-pointer mb-4 hover:bg-slate-50">
+                        <input type="file" id="fileInput" class="hidden" multiple>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        <p class="text-sm font-medium text-slate-600">クリックまたはドロップ</p>
+                        <p id="accept-label" class="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">PDFファイル</p>
+                    </div>
+
+                    <!-- Split Settings (Only visible in split mode) -->
+                    <div id="split-options" class="hidden pt-4 border-t border-slate-100 mt-4 animate-fadeIn">
+                        <h3 class="text-sm font-bold mb-3">分割設定</h3>
+                        <div class="space-y-2">
+                            <label class="flex items-center text-sm cursor-pointer p-2 rounded hover:bg-slate-50 transition-colors">
+                                <input type="radio" name="splitType" value="all" checked class="w-4 h-4 text-blue-600 mr-2"> 1ページずつ全て
+                            </label>
+                            <label class="flex items-center text-sm cursor-pointer p-2 rounded hover:bg-slate-50 transition-colors">
+                                <input type="radio" name="splitType" value="visual" class="w-4 h-4 text-blue-600 mr-2"> 視覚的に分割位置を指定
+                            </label>
+                            <label class="flex items-center text-sm cursor-pointer p-2 rounded hover:bg-slate-50 transition-colors">
+                                <input type="radio" name="splitType" value="range" class="w-4 h-4 text-blue-600 mr-2"> 範囲指定
+                            </label>
+                            
+                            <!-- 範囲指定テキスト入力 -->
+                            <input type="text" id="splitRangeInput" placeholder="例: 1-3, 5, 8-10" class="hidden w-full mt-2 p-2.5 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                            
+                            <!-- 視覚的分割 UI -->
+                            <div id="visualSplitArea" class="hidden mt-2 p-4 bg-slate-50 rounded-lg border border-slate-200 overflow-x-auto">
+                                <p class="text-xs text-slate-500 mb-3 font-medium">ページ間の「ハサミ」アイコンをクリックして、分割する場所を指定してください。</p>
+                                <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-2 pt-1 px-1">
+                                    <!-- JSで生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="processBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg mt-6 disabled:opacity-30 disabled:cursor-not-allowed">
+                        実行する
+                    </button>
+                    <button id="clearBtn" class="w-full text-slate-400 hover:text-red-500 text-xs mt-4 transition-colors">全削除</button>
+                </div>
+            </div>
+
+            <!-- Right: File List & Preview -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[450px] flex flex-col">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="font-bold flex items-center">
+                            <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs mr-2">2</span>
+                            ファイルリスト
+                        </h2>
+                        <span id="fileCount" class="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">0 ファイル</span>
+                    </div>
+
+                    <div id="fileList" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow">
+                        <!-- File cards injected here -->
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="flex flex-col items-center justify-center py-20 text-slate-300 flex-grow">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                        </svg>
+                        <p class="font-medium">ファイルが選択されていません</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div id="resultArea" class="hidden mt-10 animate-fadeIn">
+            <div class="bg-green-50 border border-green-100 rounded-2xl p-10 text-center shadow-sm">
+                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+                <h3 class="text-2xl font-bold text-slate-800 mb-2">完了しました！</h3>
+                <p id="resultInfo" class="text-slate-600 mb-8"></p>
+                <button id="downloadBtn" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-12 rounded-xl transition-all hover:scale-105 shadow-xl inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    ダウンロード
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center z-50 text-white">
+        <div class="animate-spin rounded-full h-14 w-14 border-4 border-white border-t-transparent mb-4"></div>
+        <p id="loadingText" class="font-bold text-lg">処理中...</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-8 py-3.5 rounded-full shadow-2xl opacity-0 transition-all pointer-events-none z-50 flex items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+        </svg>
+        <span id="toastMsg" class="font-medium"></span>
+    </div>
+
+    <script>
+        // PDF.js worker setup
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        const { PDFDocument, degrees } = PDFLib;
+
+        let mode = 'merge'; // 'merge', 'split', 'img2pdf'
+        let files = []; // { id, name, type, data, pages, rotation, previewUrl }
+        let resultBlob = null;
+        let visualSplitPoints = new Set(); // 視覚的分割ポイント保持用
+
+        // Split Type 切り替えイベント
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('input[name="splitType"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const val = e.target.value;
+                    document.getElementById('splitRangeInput').classList.toggle('hidden', val !== 'range');
+                    document.getElementById('visualSplitArea').classList.toggle('hidden', val !== 'visual');
+                });
+            });
+        });
+
+        // --- Tab Control ---
+        function setMode(newMode) {
+            if (document.getElementById('loadingOverlay').style.display === 'flex') return;
+            
+            mode = newMode;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`tab-${newMode}`).classList.add('active');
+            
+            document.getElementById('split-options').style.display = mode === 'split' ? 'block' : 'none';
+            document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
+            document.getElementById('fileInput').accept = mode === 'img2pdf' ? 'image/jpeg,image/png' : 'application/pdf';
+            
+            // splitモードへの切り替え時はUIをリセット
+            if (mode === 'split') {
+                document.querySelector('input[name="splitType"][value="all"]').checked = true;
+                document.getElementById('splitRangeInput').classList.add('hidden');
+                document.getElementById('visualSplitArea').classList.add('hidden');
+            }
+            
+            clearAll();
+        }
+
+        // --- File Handling ---
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileListContainer = document.getElementById('fileList');
+        const emptyState = document.getElementById('emptyState');
+
+        dropZone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => handleFiles(e.target.files);
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+        dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); };
+
+        async function handleFiles(newFiles) {
+            if (newFiles.length === 0) return;
+            if (mode === 'split') files = []; // Split mode supports single file
+
+            showLoading(true, "ファイルを読み込み中...");
+
+            for (let f of newFiles) {
+                if (mode === 'img2pdf' && !f.type.startsWith('image/')) continue;
+                if (mode !== 'img2pdf' && f.type !== 'application/pdf') continue;
+
+                const id = Math.random().toString(36).substr(2, 9);
+                const arrayBuffer = await f.arrayBuffer();
+                let pages = 0;
+                let previewUrl = '';
+
+                if (f.type === 'application/pdf') {
+                    try {
+                        // エラー対策: slice(0) を使用して ArrayBuffer のコピーを渡すことで
+                        // PDF.js などの Web Worker によって Buffer がデタッチされるのを防ぎます
+                        const pdf = await PDFDocument.load(arrayBuffer.slice(0));
+                        pages = pdf.getPageCount();
+                        previewUrl = await generatePdfPreview(arrayBuffer.slice(0));
+                    } catch(e) { 
+                        showToast(`PDF "${f.name}" は破損しているか保護されています。`); 
+                        continue; 
+                    }
+                } else {
+                    previewUrl = URL.createObjectURL(new Blob([arrayBuffer]));
+                }
+
+                files.push({
+                    id,
+                    name: f.name,
+                    type: f.type,
+                    data: arrayBuffer,
+                    pages,
+                    rotation: 0,
+                    previewUrl
+                });
+            }
+            renderFileList();
+            updateStats();
+            showLoading(false);
+            fileInput.value = ''; // Reset for same file selection
+        }
+
+        async function generatePdfPreview(buffer) {
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: buffer });
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 0.3 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                return canvas.toDataURL();
+            } catch (err) {
+                console.error("Preview generation failed", err);
+                return ''; // Fallback to empty
+            }
+        }
+
+        function renderFileList() {
+            fileListContainer.innerHTML = '';
+            emptyState.style.display = files.length === 0 ? 'flex' : 'none';
+
+            files.forEach((f, index) => {
+                const card = document.createElement('div');
+                card.className = "file-card bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start space-x-4 animate-fadeIn";
+                card.innerHTML = `
+                    <div class="w-20 h-28 bg-white border border-slate-100 rounded flex-shrink-0 flex items-center justify-center overflow-hidden shadow-inner relative">
+                        ${f.previewUrl ? `<img src="${f.previewUrl}" class="max-h-full max-w-full object-contain transition-transform duration-300" style="transform: rotate(${f.rotation}deg)">` : 
+                        `<div class="text-[10px] text-slate-300">No Preview</div>`}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs font-bold text-slate-800 truncate mb-1" title="${f.name}">${f.name}</p>
+                        <p class="text-[10px] font-medium text-slate-400 mb-3">${f.type === 'application/pdf' ? f.pages + ' ページ' : '画像ファイル'}</p>
+                        
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="rotateFile('${f.id}')" class="p-2 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all text-slate-500 shadow-sm" title="90度回転">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            </button>
+                            ${mode === 'merge' ? `
+                                <button onclick="moveFile('${f.id}', -1)" class="p-2 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all text-slate-500 shadow-sm" title="上へ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                                </button>
+                                <button onclick="moveFile('${f.id}', 1)" class="p-2 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all text-slate-500 shadow-sm" title="下へ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                </button>
+                            ` : ''}
+                            <button onclick="removeFile('${f.id}')" class="p-2 bg-white border border-red-100 text-red-400 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all shadow-sm" title="削除">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                fileListContainer.appendChild(card);
+            });
+
+            if (mode === 'split') {
+                renderVisualSplitter();
+            }
+        }
+
+        // --- Visual Splitter Rendering ---
+        function renderVisualSplitter() {
+            const container = document.getElementById('visualSplitContainer');
+            container.innerHTML = '';
+            visualSplitPoints.clear();
+
+            if (files.length === 0) return;
+            const pages = files[0].pages;
+
+            for (let i = 1; i <= pages; i++) {
+                // Page Card
+                const pageCard = document.createElement('div');
+                pageCard.className = "w-16 h-24 bg-white border border-slate-300 rounded shadow-sm flex flex-col items-center justify-center shrink-0 relative";
+                pageCard.innerHTML = `<span class="text-xs font-bold text-slate-500">P.${i}</span>`;
+                container.appendChild(pageCard);
+                
+                // Split Point (Scissor)
+                if (i < pages) {
+                    const splitWrapper = document.createElement('div');
+                    splitWrapper.className = "w-10 flex flex-col items-center justify-center group cursor-pointer shrink-0 mx-0.5";
+                    
+                    const lineTop = document.createElement('div');
+                    lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
+                    
+                    const iconBtn = document.createElement('div');
+                    iconBtn.className = "w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-100 transition-colors my-1 z-10 shadow-sm";
+                    iconBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+                        </svg>
+                    `;
+                    
+                    const lineBottom = document.createElement('div');
+                    lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
+
+                    splitWrapper.appendChild(lineTop);
+                    splitWrapper.appendChild(iconBtn);
+                    splitWrapper.appendChild(lineBottom);
+
+                    splitWrapper.onclick = () => {
+                        const isCut = visualSplitPoints.has(i);
+                        if (isCut) {
+                            visualSplitPoints.delete(i);
+                            // 元に戻す
+                            lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
+                            lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
+                            iconBtn.className = "w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-100 transition-colors my-1 z-10 shadow-sm";
+                        } else {
+                            visualSplitPoints.add(i);
+                            // 切断状態（赤色に変更）
+                            lineTop.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors";
+                            lineBottom.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors";
+                            iconBtn.className = "w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-red-600 transition-colors my-1 z-10 shadow-sm";
+                        }
+                    };
+
+                    container.appendChild(splitWrapper);
+                }
+            }
+        }
+
+        // --- Operations ---
+        window.rotateFile = (id) => {
+            const f = files.find(x => x.id === id);
+            f.rotation = (f.rotation + 90) % 360;
+            renderFileList();
+        };
+
+        window.removeFile = (id) => {
+            const f = files.find(x => x.id === id);
+            if (f && f.previewUrl.startsWith('blob:')) URL.revokeObjectURL(f.previewUrl);
+            files = files.filter(x => x.id !== id);
+            renderFileList();
+            updateStats();
+        };
+
+        window.moveFile = (id, direction) => {
+            const idx = files.findIndex(x => x.id === id);
+            const target = idx + direction;
+            if (target >= 0 && target < files.length) {
+                [files[idx], files[target]] = [files[target], files[idx]];
+                renderFileList();
+            }
+        };
+
+        function updateStats() {
+            document.getElementById('fileCount').textContent = `${files.length} ファイル`;
+            const canProcess = (mode === 'merge' && files.length >= 2) || 
+                             (mode === 'split' && files.length === 1) ||
+                             (mode === 'img2pdf' && files.length >= 1);
+            document.getElementById('processBtn').disabled = !canProcess;
+            document.getElementById('resultArea').classList.add('hidden');
+        }
+
+        function clearAll() {
+            files.forEach(f => {
+                if (f.previewUrl.startsWith('blob:')) URL.revokeObjectURL(f.previewUrl);
+            });
+            files = [];
+            renderFileList();
+            updateStats();
+        }
+        document.getElementById('clearBtn').onclick = clearAll;
+
+        // --- Processing Logic ---
+        document.getElementById('processBtn').onclick = async () => {
+            showLoading(true, "PDFを処理中...");
+            try {
+                if (mode === 'merge') await processMerge();
+                else if (mode === 'split') await processSplit();
+                else if (mode === 'img2pdf') await processImg2Pdf();
+            } catch (err) {
+                console.error(err);
+                showToast('処理中に致命的なエラーが発生しました。設定を確認してください。');
+            }
+            showLoading(false);
+        };
+
+        async function processMerge() {
+            const mergedPdf = await PDFDocument.create();
+            for (let f of files) {
+                // デタッチ対策としてスライスしたデータをロードします
+                const doc = await PDFDocument.load(f.data.slice(0));
+                const copiedPages = await mergedPdf.copyPages(doc, doc.getPageIndices());
+                copiedPages.forEach(p => {
+                    if (f.rotation !== 0) {
+                        // 既存の回転角に加算
+                        const currentRot = p.getRotation().angle;
+                        p.setRotation(degrees(currentRot + f.rotation));
+                    }
+                    mergedPdf.addPage(p);
+                });
+            }
+            const bytes = await mergedPdf.save();
+            resultBlob = new Blob([bytes], { type: 'application/pdf' });
+            showResult('結合完了', '選択したすべてのPDFを1つのファイルにまとめました。', `merged_${Date.now()}.pdf`);
+        }
+
+        async function processSplit() {
+            if (files.length === 0) return;
+            const f = files[0];
+            // デタッチ対策
+            const sourceDoc = await PDFDocument.load(f.data.slice(0));
+            const total = sourceDoc.getPageCount();
+            const splitType = document.querySelector('input[name="splitType"]:checked').value;
+            const zip = new JSZip();
+
+            if (splitType === 'all') {
+                for (let i = 0; i < total; i++) {
+                    const newDoc = await PDFDocument.create();
+                    const [page] = await newDoc.copyPages(sourceDoc, [i]);
+                    if (f.rotation !== 0) {
+                        const currentRot = page.getRotation().angle;
+                        page.setRotation(degrees(currentRot + f.rotation));
+                    }
+                    newDoc.addPage(page);
+                    zip.file(`page_${i+1}.pdf`, await newDoc.save());
+                }
+            } else if (splitType === 'visual') {
+                const points = Array.from(visualSplitPoints).sort((a, b) => a - b);
+                if (points.length === 0) {
+                    showToast('分割する場所（ハサミアイコン）をクリックして指定してください。');
+                    throw new Error('No points selected');
+                }
+
+                const ranges = [];
+                let start = 1;
+                for (let p of points) {
+                    ranges.push({ start: start - 1, end: p - 1 });
+                    start = p + 1;
+                }
+                ranges.push({ start: start - 1, end: total - 1 });
+
+                for (let [idx, r] of ranges.entries()) {
+                    const newDoc = await PDFDocument.create();
+                    const pagesToCopy = [];
+                    for (let p = r.start; p <= r.end; p++) pagesToCopy.push(p);
+
+                    const copied = await newDoc.copyPages(sourceDoc, pagesToCopy);
+                    copied.forEach(p => {
+                        if (f.rotation !== 0) {
+                            const currentRot = p.getRotation().angle;
+                            p.setRotation(degrees(currentRot + f.rotation));
+                        }
+                        newDoc.addPage(p);
+                    });
+                    
+                    const startPage = r.start + 1;
+                    const endPage = r.end + 1;
+                    const fileName = startPage === endPage ? `page_${startPage}.pdf` : `pages_${startPage}-${endPage}.pdf`;
+                    zip.file(fileName, await newDoc.save());
+                }
+            } else {
+                const rangeStr = document.getElementById('splitRangeInput').value;
+                const ranges = parseRanges(rangeStr, total);
+                if (ranges.length === 0) {
+                    showToast('有効な範囲を指定してください（例: 1-3, 5）');
+                    throw new Error('Invalid range');
+                }
+                
+                for (let [idx, r] of ranges.entries()) {
+                    const newDoc = await PDFDocument.create();
+                    const copied = await newDoc.copyPages(sourceDoc, r);
+                    copied.forEach(p => {
+                        if (f.rotation !== 0) {
+                            const currentRot = p.getRotation().angle;
+                            p.setRotation(degrees(currentRot + f.rotation));
+                        }
+                        newDoc.addPage(p);
+                    });
+                    zip.file(`split_${idx+1}_range.pdf`, await newDoc.save());
+                }
+            }
+
+            resultBlob = await zip.generateAsync({ type: 'blob' });
+            showResult('分割完了', 'PDFを指定条件で分割しました。', `split_${f.name.replace('.pdf','')}.zip`);
+        }
+
+        async function processImg2Pdf() {
+            const pdfDoc = await PDFDocument.create();
+            for (let f of files) {
+                const page = pdfDoc.addPage();
+                let img;
+                try {
+                    // デタッチ対策
+                    if (f.type === 'image/jpeg') img = await pdfDoc.embedJpg(f.data.slice(0));
+                    else if (f.type === 'image/png') img = await pdfDoc.embedPng(f.data.slice(0));
+                    else continue;
+                } catch (e) {
+                    console.error("Image embedding failed", e);
+                    continue;
+                }
+
+                const { width, height } = img.scale(1);
+                // 画像サイズにページを合わせる
+                page.setSize(width, height);
+                page.drawImage(img, { x: 0, y: 0, width, height });
+                
+                if (f.rotation !== 0) {
+                    // 画像ページの場合、新規作成時は回転0なのでそのままセット
+                    page.setRotation(degrees(f.rotation));
+                }
+            }
+            const bytes = await pdfDoc.save();
+            resultBlob = new Blob([bytes], { type: 'application/pdf' });
+            showResult('変換完了', '画像ファイルをPDFドキュメントに変換しました。', `converted_${Date.now()}.pdf`);
+        }
+
+        // --- Helpers ---
+        function parseRanges(str, max) {
+            if (!str || !str.trim()) return [];
+            return str.split(',').map(part => {
+                const range = part.trim().split('-').map(s => parseInt(s, 10));
+                if (range.length === 1 && !isNaN(range[0])) {
+                    const p = range[0];
+                    return (p >= 1 && p <= max) ? [p - 1] : null;
+                }
+                if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
+                    const start = Math.max(1, range[0]);
+                    const end = Math.min(max, range[1]);
+                    if (start > end) return null;
+                    let res = [];
+                    for(let i = start - 1; i < end; i++) res.push(i);
+                    return res;
+                }
+                return null;
+            }).filter(x => x !== null);
+        }
+
+        function showResult(title, msg, filename) {
+            document.getElementById('resultArea').classList.remove('hidden');
+            document.getElementById('resultInfo').textContent = msg;
+            document.getElementById('downloadBtn').onclick = () => {
+                const url = URL.createObjectURL(resultBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+            };
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        function showLoading(show, text = "処理中...") {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toastMsg').textContent = msg;
+            t.classList.replace('opacity-0', 'opacity-100');
+            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 4000);
+        }
+    </script>
+</body>
+</html>
