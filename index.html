@@ -42,7 +42,7 @@
 
         /* 書き込みモードのテキストアノテーション用スタイル */
         .annotation-textarea {
-            position: absolute;
+            display: block;
             background: rgba(255, 255, 255, 0.7);
             border: 1px dashed #64748b;
             padding: 4px 6px;
@@ -64,19 +64,17 @@
         }
         .annotation-delete {
             position: absolute;
-            top: -10px;
-            right: -10px;
+            top: -12px;
+            left: -12px;
             background: #ef4444;
             color: white;
             border-radius: 50%;
-            width: 22px;
-            height: 22px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 12px;
-            font-weight: bold;
             z-index: 20;
             opacity: 0;
             transition: opacity 0.2s, transform 0.1s;
@@ -87,13 +85,13 @@
         /* 移動用のドラッグハンドル */
         .annotation-drag-handle {
             position: absolute;
-            top: -10px;
-            left: -10px;
+            top: -12px;
+            left: 18px;
             background: #cbd5e1;
             color: #334155;
-            border-radius: 4px;
-            width: 22px;
-            height: 22px;
+            border-radius: 6px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -153,15 +151,15 @@
     </header>
 
     <main class="max-w-6xl mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 transition-all duration-300">
             
             <!-- Left Column: Controls & Upload -->
-            <div class="lg:col-span-4 space-y-6">
+            <div id="leftColumn" class="lg:col-span-4 space-y-6 transition-all duration-300">
                 <!-- Main Action Card -->
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 relative overflow-hidden">
+                <div id="mainActionCard" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 relative overflow-hidden transition-all duration-300">
                     <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                     
-                    <div class="mb-6">
+                    <div id="actionCardHeader" class="mb-6 transition-all duration-300">
                         <h2 class="text-lg font-bold text-slate-800 flex items-center">
                             <span class="bg-blue-100 text-blue-700 w-7 h-7 rounded-full flex items-center justify-center text-xs mr-3 font-extrabold shadow-sm">1</span>
                             ファイルの追加
@@ -169,7 +167,7 @@
                         <p id="mode-description" class="text-xs text-slate-500 mt-1 ml-10">複数のPDFを一つにまとめます。</p>
                     </div>
 
-                    <div id="dropZone" class="drop-zone rounded-2xl p-8 text-center cursor-pointer mb-2 bg-slate-50/50 relative overflow-hidden group">
+                    <div id="dropZone" class="drop-zone rounded-2xl p-8 text-center cursor-pointer mb-2 bg-slate-50/50 relative overflow-hidden group transition-all duration-300">
                         <div class="absolute inset-0 bg-blue-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                         <input type="file" id="fileInput" class="hidden" multiple>
                         <div class="relative z-10 flex flex-col items-center justify-center">
@@ -209,7 +207,7 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="mt-8 pt-6 border-t border-slate-100">
+                    <div id="actionButtons" class="mt-8 pt-6 border-t border-slate-100 transition-all duration-300">
                         <button id="processBtn" class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-slate-900/20 hover:shadow-blue-600/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -225,7 +223,7 @@
             </div>
 
             <!-- Right Column: File List & Work Area -->
-            <div class="lg:col-span-8 flex flex-col gap-6">
+            <div id="rightColumn" class="lg:col-span-8 flex flex-col gap-6 transition-all duration-300">
                 
                 <!-- Visual Workspace (Conditional) -->
                 <!-- Split Workspace -->
@@ -320,7 +318,7 @@
                     </div>
 
                     <!-- PDF Viewer Area (Height expanded) -->
-                    <div id="pdfEditorContainer" class="relative overflow-auto bg-slate-200/80 rounded-2xl border border-slate-300 flex-grow min-h-[700px] h-[75vh] flex justify-center custom-scrollbar p-6 shadow-inner">
+                    <div id="pdfEditorContainer" class="relative overflow-auto bg-slate-200/80 rounded-2xl border border-slate-300 flex-grow min-h-[700px] h-[85vh] flex justify-center custom-scrollbar p-6 shadow-inner transition-all duration-300">
                         <div id="pdfPageWrapper" class="relative shadow-xl bg-white origin-top" style="width: max-content; height: max-content;">
                             <canvas id="writePdfCanvas" class="block"></canvas>
                             <div id="writeAnnotationLayer" class="absolute inset-0 cursor-crosshair"></div>
@@ -533,16 +531,56 @@
             
             const fileListPanel = document.getElementById('fileListPanel');
             const writeWorkspace = document.getElementById('writeWorkspace');
+            
+            const leftCol = document.getElementById('leftColumn');
+            const rightCol = document.getElementById('rightColumn');
+            const mainActionCard = document.getElementById('mainActionCard');
+            const dropZone = document.getElementById('dropZone');
+            const actionButtons = document.getElementById('actionButtons');
+            const actionCardHeader = document.getElementById('actionCardHeader');
+
             if (mode === 'write') {
                 fileListPanel.classList.add('hidden');
                 fileListPanel.classList.remove('flex');
                 writeWorkspace.classList.remove('hidden');
                 writeWorkspace.classList.add('flex');
+
+                // 左カラムと右カラムを全幅にして縦積みにする（表示領域の拡張）
+                leftCol.classList.remove('lg:col-span-4');
+                leftCol.classList.add('lg:col-span-12');
+                rightCol.classList.remove('lg:col-span-8');
+                rightCol.classList.add('lg:col-span-12');
+
+                // アクションカードを横並びの細いバーに変更
+                mainActionCard.classList.add('lg:flex', 'lg:items-center', 'lg:justify-between', 'lg:gap-8');
+                actionCardHeader.classList.add('lg:w-1/4', 'lg:mb-0');
+                dropZone.classList.add('lg:flex-1', 'lg:mb-0');
+                dropZone.classList.replace('p-8', 'p-4'); 
+                actionButtons.classList.add('lg:w-64', 'lg:mt-0', 'lg:pt-0', 'lg:border-t-0');
+                actionButtons.classList.remove('mt-8', 'pt-6');
+                
+                document.getElementById('pdfEditorContainer').classList.replace('h-[75vh]', 'h-[85vh]');
+
             } else {
                 fileListPanel.classList.remove('hidden');
                 fileListPanel.classList.add('flex');
                 writeWorkspace.classList.add('hidden');
                 writeWorkspace.classList.remove('flex');
+
+                // 通常レイアウトに戻す
+                leftCol.classList.add('lg:col-span-4');
+                leftCol.classList.remove('lg:col-span-12');
+                rightCol.classList.add('lg:col-span-8');
+                rightCol.classList.remove('lg:col-span-12');
+
+                mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between', 'lg:gap-8');
+                actionCardHeader.classList.remove('lg:w-1/4', 'lg:mb-0');
+                dropZone.classList.remove('lg:flex-1', 'lg:mb-0');
+                dropZone.classList.replace('p-4', 'p-8');
+                actionButtons.classList.remove('lg:w-64', 'lg:mt-0', 'lg:pt-0', 'lg:border-t-0');
+                actionButtons.classList.add('mt-8', 'pt-6');
+
+                document.getElementById('pdfEditorContainer').classList.replace('h-[85vh]', 'h-[75vh]');
             }
 
             document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
@@ -653,11 +691,11 @@
                 pdfViewports = {};
                 activeAnnotationId = null;
 
-                // 初回ロード時に画面幅に合わせて初期スケールを計算（最大2.0倍）
+                // 初回ロード時に画面幅に合わせて初期スケールを計算（最大3.0倍）
                 const page = await pdfDocProxy.getPage(1);
                 const unscaledViewport = page.getViewport({ scale: 1.0 });
                 const containerWidth = document.getElementById('pdfEditorContainer').clientWidth - 40;
-                writeCurrentScale = Math.max(1.0, Math.min(2.0, containerWidth / unscaledViewport.width));
+                writeCurrentScale = Math.max(1.0, Math.min(3.0, containerWidth / unscaledViewport.width));
                 updateZoomUI();
                 
                 // --- フォントサイズの自動推定機能 ---
@@ -757,7 +795,7 @@
                 id, 
                 x: x / writeCurrentScale, 
                 y: y / writeCurrentScale, 
-                width: 200 / writeCurrentScale, 
+                width: 300 / writeCurrentScale, // 初期幅を少し広めに
                 height: (fontSize * 1.5 + 10) / writeCurrentScale, 
                 text: '',
                 color,
@@ -812,7 +850,7 @@
             // 削除ボタン
             const delBtn = document.createElement('div');
             delBtn.className = 'annotation-delete';
-            delBtn.innerHTML = '×';
+            delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>';
             delBtn.title = "削除";
             delBtn.onclick = (e) => {
                 e.stopPropagation();
