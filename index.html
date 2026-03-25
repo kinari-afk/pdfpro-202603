@@ -12,153 +12,251 @@
     <!-- ZIP圧縮 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.2s ease; }
-        .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; }
-        .file-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .file-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        .tab-btn.active { border-bottom: 3px solid #3b82f6; color: #3b82f6; font-weight: 700; }
-        canvas { max-width: 100%; height: auto; border-radius: 4px; }
-        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        
+        .drop-zone { border: 2px dashed #cbd5e1; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .drop-zone:hover { border-color: #60a5fa; background-color: #f8fafc; }
+        .drop-zone.dragover { border-color: #3b82f6; background-color: #eff6ff; transform: scale(1.02); }
+        
+        .file-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .file-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); border-color: #bfdbfe; }
+        
+        .tab-btn { transition: all 0.2s ease; }
+        .tab-btn.active { background-color: white; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: 600; }
+        .tab-btn:not(.active):hover { color: #475569; }
+
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .animate-fadeIn { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800">
-    <div class="max-w-5xl mx-auto py-10 px-4">
-        <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-extrabold tracking-tight mb-2">PDFマルチツール <span class="text-blue-600">Pro</span></h1>
-            <p class="text-slate-500 text-sm">分割・結合・回転・削除・画像変換をブラウザのみで完結（サーバー送信なし）</p>
-            <p class="text-slate-400 text-xs mt-1">App creator：KINARI</p>
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-12">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 glass-effect">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2 rounded-xl shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight text-slate-900 leading-none">PDF Toolkit <span class="text-blue-600">Pro</span></h1>
+                    <p class="text-xs text-slate-500 font-medium mt-1">App creator: KINARI</p>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs (Segmented Control style) -->
+            <div class="flex bg-slate-100 p-1.5 rounded-xl shadow-inner overflow-x-auto w-full md:w-auto">
+                <button onclick="setMode('merge')" id="tab-merge" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium text-slate-500 whitespace-nowrap flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    結合 / 並び替え
+                </button>
+                <button onclick="setMode('split')" id="tab-split" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-500 whitespace-nowrap flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
+                    分割
+                </button>
+                <button onclick="setMode('remove')" id="tab-remove" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-500 whitespace-nowrap flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    ページ削除
+                </button>
+                <button onclick="setMode('img2pdf')" id="tab-img2pdf" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-500 whitespace-nowrap flex-1 md:flex-none flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    画像 → PDF
+                </button>
+            </div>
         </div>
+    </header>
 
-        <!-- Navigation Tabs -->
-        <div class="flex flex-wrap border-b border-slate-200 mb-8 bg-white rounded-t-xl overflow-hidden shadow-sm">
-            <button onclick="setMode('merge')" id="tab-merge" class="tab-btn active flex-1 py-4 px-2 text-center text-sm font-medium transition-all whitespace-nowrap">結合 / 並べ替え</button>
-            <button onclick="setMode('split')" id="tab-split" class="tab-btn flex-1 py-4 px-2 text-center text-sm font-medium transition-all whitespace-nowrap">分割</button>
-            <button onclick="setMode('remove')" id="tab-remove" class="tab-btn flex-1 py-4 px-2 text-center text-sm font-medium transition-all whitespace-nowrap">ページ削除</button>
-            <button onclick="setMode('img2pdf')" id="tab-img2pdf" class="tab-btn flex-1 py-4 px-2 text-center text-sm font-medium transition-all whitespace-nowrap">画像からPDF</button>
-        </div>
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Controls & Upload -->
+            <div class="lg:col-span-4 space-y-6">
+                <!-- Main Action Card -->
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                    
+                    <div class="mb-6">
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <span class="bg-blue-100 text-blue-700 w-7 h-7 rounded-full flex items-center justify-center text-xs mr-3 font-extrabold shadow-sm">1</span>
+                            ファイルの追加
+                        </h2>
+                        <p id="mode-description" class="text-xs text-slate-500 mt-1 ml-10">複数のPDFを一つにまとめます。</p>
+                    </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left: Controls & Upload -->
-            <div class="lg:col-span-1 space-y-6">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                    <h2 class="font-bold mb-4 flex items-center">
-                        <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs mr-2">1</span>
-                        ファイルの追加
-                    </h2>
-                    <div id="dropZone" class="drop-zone rounded-xl p-8 text-center cursor-pointer mb-4 hover:bg-slate-50">
+                    <div id="dropZone" class="drop-zone rounded-2xl p-8 text-center cursor-pointer mb-2 bg-slate-50/50 relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-blue-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                         <input type="file" id="fileInput" class="hidden" multiple>
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        <p class="text-sm font-medium text-slate-600">クリックまたはドロップ</p>
-                        <p id="accept-label" class="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">PDFファイル</p>
-                    </div>
-
-                    <!-- Split Settings (Only visible in split mode) -->
-                    <div id="split-options" class="hidden pt-4 border-t border-slate-100 mt-4 animate-fadeIn">
-                        <h3 class="text-sm font-bold mb-3">分割設定</h3>
-                        <div class="space-y-2">
-                            <label class="flex items-center text-sm cursor-pointer p-2 rounded hover:bg-slate-50 transition-colors">
-                                <input type="radio" name="splitType" value="all" checked class="w-4 h-4 text-blue-600 mr-2"> 1ページずつ全て
-                            </label>
-                            <label class="flex items-center text-sm cursor-pointer p-2 rounded hover:bg-slate-50 transition-colors">
-                                <input type="radio" name="splitType" value="visual" class="w-4 h-4 text-blue-600 mr-2"> 視覚的に分割位置を指定
-                            </label>
-                            <label class="flex items-center text-sm cursor-pointer p-2 rounded hover:bg-slate-50 transition-colors">
-                                <input type="radio" name="splitType" value="range" class="w-4 h-4 text-blue-600 mr-2"> 範囲指定
-                            </label>
-                            
-                            <!-- 範囲指定テキスト入力 -->
-                            <input type="text" id="splitRangeInput" placeholder="例: 1-3, 5, 8-10" class="hidden w-full mt-2 p-2.5 text-sm border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 transition-all">
-                            
-                            <!-- 視覚的分割 UI -->
-                            <div id="visualSplitArea" class="hidden mt-2 p-4 bg-slate-50 rounded-lg border border-slate-200 overflow-x-auto">
-                                <p class="text-xs text-slate-500 mb-3 font-medium">ページ間の「ハサミ」アイコンをクリックして、分割する場所を指定してください。</p>
-                                <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-2 pt-1 px-1">
-                                    <!-- JSで生成 -->
-                                </div>
+                        <div class="relative z-10 flex flex-col items-center justify-center">
+                            <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
                             </div>
+                            <p class="text-base font-semibold text-slate-700 mb-1">クリックまたはドロップ</p>
+                            <p id="accept-label" class="text-xs text-slate-400 uppercase tracking-wider font-medium bg-slate-100 px-3 py-1 rounded-full mt-2">PDFファイル</p>
                         </div>
                     </div>
 
-                    <!-- Remove Settings (Only visible in remove mode) -->
-                    <div id="remove-options" class="hidden pt-4 border-t border-slate-100 mt-4 animate-fadeIn">
-                        <h3 class="text-sm font-bold mb-3">ページ整理</h3>
-                        <p class="text-xs text-slate-500 mb-3 font-medium">クリックして、削除したい（不要な）ページを選択してください。</p>
-                        <div class="p-4 bg-slate-50 rounded-lg border border-slate-200 overflow-y-auto max-h-60">
-                            <div id="visualRemoveContainer" class="flex flex-wrap gap-2 pb-2 pt-1 px-1">
-                                <!-- JSで生成 -->
-                            </div>
+                    <!-- Split Settings -->
+                    <div id="split-options" class="hidden pt-6 mt-4 animate-fadeIn">
+                        <h3 class="text-sm font-bold text-slate-800 mb-3 ml-1">分割方法を選択</h3>
+                        <div class="space-y-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+                            <label class="flex items-center text-sm cursor-pointer p-3 rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-slate-200">
+                                <input type="radio" name="splitType" value="all" checked class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300 mr-3"> 
+                                <span class="font-medium text-slate-700">1ページずつ全て分割</span>
+                            </label>
+                            <label class="flex items-center text-sm cursor-pointer p-3 rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-slate-200">
+                                <input type="radio" name="splitType" value="visual" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300 mr-3"> 
+                                <span class="font-medium text-slate-700">視覚的に分割位置を指定</span>
+                            </label>
+                            <label class="flex items-center text-sm cursor-pointer p-3 rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-slate-200">
+                                <input type="radio" name="splitType" value="range" class="w-4 h-4 text-blue-600 focus:ring-blue-500 border-slate-300 mr-3"> 
+                                <span class="font-medium text-slate-700">ページ番号で範囲指定</span>
+                            </label>
+                        </div>
+                        
+                        <!-- 範囲指定入力 -->
+                        <div id="splitRangeInputWrapper" class="hidden mt-3 animate-fadeIn">
+                            <input type="text" id="splitRangeInput" placeholder="例: 1-3, 5, 8-10" class="w-full p-3 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm bg-white">
+                            <p class="text-[11px] text-slate-400 mt-1.5 ml-1">カンマ区切りで指定。ハイフンで範囲指定可能です。</p>
                         </div>
                     </div>
 
-                    <button id="processBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg mt-6 disabled:opacity-30 disabled:cursor-not-allowed">
-                        実行する
-                    </button>
-                    <button id="clearBtn" class="w-full text-slate-400 hover:text-red-500 text-xs mt-4 transition-colors">全削除</button>
+                    <!-- Action Buttons -->
+                    <div class="mt-8 pt-6 border-t border-slate-100">
+                        <button id="processBtn" class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg shadow-slate-900/20 hover:shadow-blue-600/30 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-900">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            処理を実行する
+                        </button>
+                        <button id="clearBtn" class="w-full text-slate-400 hover:text-red-500 text-sm font-medium mt-4 py-2 transition-colors flex items-center justify-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            リストをクリア
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Right: File List & Preview -->
-            <div class="lg:col-span-2">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 min-h-[450px] flex flex-col">
-                    <div class="flex justify-between items-center mb-6">
-                        <h2 class="font-bold flex items-center">
-                            <span class="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs mr-2">2</span>
-                            ファイルリスト
+            <!-- Right Column: File List & Work Area -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                
+                <!-- Visual Workspace (Conditional) -->
+                <!-- Split Workspace -->
+                <div id="visualSplitArea" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
+                    <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
+                        ハサミを入れて分割
+                    </h3>
+                    <p class="text-sm text-slate-500 mb-4 bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-100">ページ間のアイコンをクリックして、分割位置を指定してください。</p>
+                    <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-x-auto custom-scrollbar">
+                        <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-3 pt-2 px-2">
+                            <!-- JS Generated Content -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Remove Workspace -->
+                <div id="remove-options" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
+                    <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        不要なページを削除
+                    </h3>
+                    <p class="text-sm text-slate-500 mb-4 bg-red-50 text-red-800 p-3 rounded-lg border border-red-100">クリックして、<span class="font-bold">削除したいページ（赤色）</span>を選択してください。</p>
+                    <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-y-auto max-h-[400px] custom-scrollbar">
+                        <div id="visualRemoveContainer" class="flex flex-wrap gap-4 pb-2 pt-1 justify-center md:justify-start">
+                            <!-- JS Generated Content -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File List Panel -->
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex-grow flex flex-col">
+                    <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center">
+                            <span class="bg-blue-100 text-blue-700 w-7 h-7 rounded-full flex items-center justify-center text-xs mr-3 font-extrabold shadow-sm">2</span>
+                            対象ファイル
                         </h2>
-                        <span id="fileCount" class="text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">0 ファイル</span>
+                        <span id="fileCount" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">0 ファイル</span>
                     </div>
 
-                    <div id="fileList" class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow content-start">
-                        <!-- File cards injected here -->
+                    <!-- File Cards Container -->
+                    <div id="fileList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 flex-grow content-start min-h-[300px]">
+                        <!-- JS Generated Content -->
                     </div>
 
                     <!-- Empty State -->
-                    <div id="emptyState" class="flex flex-col items-center justify-center py-20 text-slate-300 flex-grow">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                        </svg>
-                        <p class="font-medium">ファイルが選択されていません</p>
+                    <div id="emptyState" class="flex flex-col items-center justify-center py-20 text-slate-400 flex-grow h-full bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+                        <div class="bg-white p-4 rounded-full shadow-sm mb-4">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                            </svg>
+                        </div>
+                        <p class="font-medium">ファイルが追加されていません</p>
+                        <p class="text-xs mt-1">左側のパネルからファイルを追加してください。</p>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Result Section -->
-        <div id="resultArea" class="hidden mt-10 animate-fadeIn">
-            <div class="bg-green-50 border border-green-100 rounded-2xl p-10 text-center shadow-sm">
-                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
+        <div id="resultArea" class="hidden mt-8 animate-fadeIn max-w-3xl mx-auto">
+            <div class="bg-white border-2 border-green-500 rounded-3xl p-10 text-center shadow-xl relative overflow-hidden">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-green-50 rounded-full blur-2xl opacity-70"></div>
+                <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-blue-50 rounded-full blur-2xl opacity-70"></div>
+                
+                <div class="relative z-10">
+                    <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm border border-green-200">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h3 class="text-3xl font-extrabold text-slate-800 mb-3 tracking-tight">完了しました！</h3>
+                    <p id="resultInfo" class="text-slate-600 mb-8 font-medium bg-slate-50 inline-block px-4 py-2 rounded-lg"></p>
+                    
+                    <div>
+                        <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-12 rounded-xl transition-all hover:-translate-y-1 shadow-lg shadow-green-600/30 inline-flex items-center text-lg">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            ファイルをダウンロード
+                        </button>
+                    </div>
                 </div>
-                <h3 class="text-2xl font-bold text-slate-800 mb-2">完了しました！</h3>
-                <p id="resultInfo" class="text-slate-600 mb-8"></p>
-                <button id="downloadBtn" class="bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 px-12 rounded-xl transition-all hover:scale-105 shadow-xl inline-flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    ダウンロード
-                </button>
             </div>
+        </div>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md hidden flex-col items-center justify-center z-50 text-white transition-opacity">
+        <div class="bg-white/10 p-8 rounded-3xl border border-white/20 flex flex-col items-center shadow-2xl">
+            <div class="relative w-16 h-16 mb-4">
+                <div class="absolute inset-0 rounded-full border-4 border-white/20"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-white border-t-transparent animate-spin"></div>
+            </div>
+            <p id="loadingText" class="font-bold text-lg tracking-wider">処理中...</p>
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex-col items-center justify-center z-50 text-white">
-        <div class="animate-spin rounded-full h-14 w-14 border-4 border-white border-t-transparent mb-4"></div>
-        <p id="loadingText" class="font-bold text-lg">処理中...</p>
-    </div>
-
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-8 py-3.5 rounded-full shadow-2xl opacity-0 transition-all pointer-events-none z-50 flex items-center">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-        </svg>
-        <span id="toastMsg" class="font-medium"></span>
+    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl opacity-0 transition-all pointer-events-none z-50 flex items-center border border-slate-700">
+        <div id="toastIcon" class="mr-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+        </div>
+        <span id="toastMsg" class="font-medium text-sm"></span>
     </div>
 
     <script>
@@ -169,18 +267,26 @@
         let mode = 'merge'; // 'merge', 'split', 'remove', 'img2pdf'
         let files = []; // { id, name, type, data, pages, rotation, previewUrl }
         let resultBlob = null;
-        let visualSplitPoints = new Set(); // 視覚的分割ポイント保持用
-        let visualRemovePoints = new Set(); // 視覚的削除ポイント保持用
+        let visualSplitPoints = new Set();
+        let visualRemovePoints = new Set();
 
-        // Split Type 切り替えイベント
+        const modeDescriptions = {
+            'merge': '複数のPDFファイルを選択し、順番を並び替えて1つのファイルに結合します。',
+            'split': '1つのPDFファイルを、指定した条件で複数のファイルに分割します。',
+            'remove': 'PDFから不要なページをプレビューを見ながら選択して削除します。',
+            'img2pdf': 'JPGやPNGの画像ファイルを読み込み、PDFドキュメントに変換します。'
+        };
+
+        // Split Type Toggle
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('input[name="splitType"]').forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     const val = e.target.value;
-                    document.getElementById('splitRangeInput').classList.toggle('hidden', val !== 'range');
+                    document.getElementById('splitRangeInputWrapper').classList.toggle('hidden', val !== 'range');
                     document.getElementById('visualSplitArea').classList.toggle('hidden', val !== 'visual');
                 });
             });
+            updateStats();
         });
 
         // --- Tab Control ---
@@ -195,15 +301,14 @@
             document.getElementById('remove-options').style.display = mode === 'remove' ? 'block' : 'none';
             document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
             document.getElementById('fileInput').accept = mode === 'img2pdf' ? 'image/jpeg,image/png' : 'application/pdf';
+            document.getElementById('mode-description').textContent = modeDescriptions[mode];
             
-            // splitモードへの切り替え時はUIをリセット
             if (mode === 'split') {
                 document.querySelector('input[name="splitType"][value="all"]').checked = true;
-                document.getElementById('splitRangeInput').classList.add('hidden');
+                document.getElementById('splitRangeInputWrapper').classList.add('hidden');
                 document.getElementById('visualSplitArea').classList.add('hidden');
             }
 
-            // removeモードのUIリセット
             if (mode === 'remove') {
                 document.getElementById('visualRemoveContainer').innerHTML = '';
                 visualRemovePoints.clear();
@@ -226,12 +331,18 @@
 
         async function handleFiles(newFiles) {
             if (newFiles.length === 0) return;
-            // Split, Removeモードは単一ファイルのみサポート
-            if (mode === 'split' || mode === 'remove') files = []; 
+            // Split, Remove requires single file
+            if ((mode === 'split' || mode === 'remove') && files.length > 0) {
+                showToast("分割・削除モードでは1ファイルのみ処理可能です。リストをクリアしました。", "info");
+                clearAll();
+            }
 
             showLoading(true, "ファイルを読み込み中...");
 
+            let addCount = 0;
             for (let f of newFiles) {
+                if ((mode === 'split' || mode === 'remove') && addCount > 0) break; // Ensure single file limits
+                
                 if (mode === 'img2pdf' && !f.type.startsWith('image/')) continue;
                 if (mode !== 'img2pdf' && f.type !== 'application/pdf') continue;
 
@@ -246,7 +357,7 @@
                         pages = pdf.getPageCount();
                         previewUrl = await generatePdfPreview(arrayBuffer.slice(0));
                     } catch(e) { 
-                        showToast(`PDF "${f.name}" は破損しているか保護されています。`); 
+                        showToast(`PDF "${f.name}" は破損または保護されています。`, "error"); 
                         continue; 
                     }
                 } else {
@@ -254,19 +365,15 @@
                 }
 
                 files.push({
-                    id,
-                    name: f.name,
-                    type: f.type,
-                    data: arrayBuffer,
-                    pages,
-                    rotation: 0,
-                    previewUrl
+                    id, name: f.name, type: f.type, data: arrayBuffer, pages, rotation: 0, previewUrl
                 });
+                addCount++;
             }
+            
             renderFileList();
             updateStats();
             showLoading(false);
-            fileInput.value = ''; // Reset for same file selection
+            fileInput.value = '';
         }
 
         async function generatePdfPreview(buffer) {
@@ -282,8 +389,8 @@
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
                 return canvas.toDataURL();
             } catch (err) {
-                console.error("Preview generation failed", err);
-                return ''; // Fallback to empty
+                console.error("Preview failed", err);
+                return ''; 
             }
         }
 
@@ -293,42 +400,46 @@
 
             files.forEach((f, index) => {
                 const card = document.createElement('div');
-                card.className = "file-card bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start space-x-4 animate-fadeIn h-fit";
+                card.className = "file-card bg-white border border-slate-200 rounded-2xl p-4 flex flex-col h-full animate-fadeIn shadow-sm";
                 card.innerHTML = `
-                    <div class="w-20 h-28 bg-white border border-slate-100 rounded flex-shrink-0 flex items-center justify-center overflow-hidden shadow-inner relative">
-                        ${f.previewUrl ? `<img src="${f.previewUrl}" class="max-h-full max-w-full object-contain transition-transform duration-300" style="transform: rotate(${f.rotation}deg)">` : 
-                        `<div class="text-[10px] text-slate-300">No Preview</div>`}
+                    <div class="flex items-start gap-3 mb-3">
+                        <div class="w-16 h-20 bg-slate-50 border border-slate-100 rounded-lg flex-shrink-0 flex items-center justify-center overflow-hidden shadow-inner relative">
+                            ${f.previewUrl ? `<img src="${f.previewUrl}" class="max-h-full max-w-full object-contain transition-transform duration-300" style="transform: rotate(${f.rotation}deg)">` : 
+                            `<div class="text-[9px] text-slate-400 font-medium">No Image</div>`}
+                        </div>
+                        <div class="flex-1 min-w-0 pt-1">
+                            <p class="text-sm font-bold text-slate-800 truncate leading-tight" title="${f.name}">${f.name}</p>
+                            <div class="flex items-center gap-1 mt-1">
+                                <span class="bg-slate-100 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-md">${f.type === 'application/pdf' ? 'PDF' : 'IMAGE'}</span>
+                                <span class="text-[11px] font-medium text-slate-400">${f.type === 'application/pdf' ? f.pages + ' ページ' : ''}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs font-bold text-slate-800 truncate mb-1" title="${f.name}">${f.name}</p>
-                        <p class="text-[10px] font-medium text-slate-400 mb-3">${f.type === 'application/pdf' ? f.pages + ' ページ' : '画像ファイル'}</p>
-                        
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="rotateFile('${f.id}')" class="p-2 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all text-slate-500 shadow-sm" title="90度回転">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            </button>
+                    
+                    <div class="mt-auto pt-3 border-t border-slate-100 flex justify-between items-center">
+                        <div class="flex gap-1.5">
                             ${mode === 'merge' ? `
-                                <button onclick="moveFile('${f.id}', -1)" class="p-2 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all text-slate-500 shadow-sm" title="上へ">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                                <button onclick="moveFile('${f.id}', -1)" class="p-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors text-slate-500" title="前へ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                                 </button>
-                                <button onclick="moveFile('${f.id}', 1)" class="p-2 bg-white border border-slate-200 rounded-lg hover:border-blue-400 hover:text-blue-600 transition-all text-slate-500 shadow-sm" title="下へ">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                                <button onclick="moveFile('${f.id}', 1)" class="p-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors text-slate-500" title="次へ">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </button>
                             ` : ''}
-                            <button onclick="removeFile('${f.id}')" class="p-2 bg-white border border-red-100 text-red-400 rounded-lg hover:bg-red-50 hover:border-red-300 transition-all shadow-sm" title="削除">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <button onclick="rotateFile('${f.id}')" class="p-1.5 bg-slate-50 border border-slate-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-colors text-slate-500" title="90度回転">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                             </button>
                         </div>
+                        <button onclick="removeFile('${f.id}')" class="p-1.5 bg-white border border-red-100 text-red-500 rounded-lg hover:bg-red-50 hover:border-red-200 transition-colors" title="リストから削除">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
                     </div>
                 `;
                 fileListContainer.appendChild(card);
             });
 
-            if (mode === 'split') {
-                renderVisualSplitter();
-            } else if (mode === 'remove') {
-                renderVisualRemover();
-            }
+            if (mode === 'split') renderVisualSplitter();
+            else if (mode === 'remove') renderVisualRemover();
         }
 
         // --- Visual Splitter Rendering ---
@@ -342,27 +453,25 @@
 
             for (let i = 1; i <= pages; i++) {
                 const pageCard = document.createElement('div');
-                pageCard.className = "w-16 h-24 bg-white border border-slate-300 rounded shadow-sm flex flex-col items-center justify-center shrink-0 relative";
-                pageCard.innerHTML = `<span class="text-xs font-bold text-slate-500">P.${i}</span>`;
+                pageCard.className = "w-20 h-28 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative transition-all";
+                pageCard.innerHTML = `<span class="text-sm font-black text-slate-300">P.${i}</span>`;
                 container.appendChild(pageCard);
                 
                 if (i < pages) {
                     const splitWrapper = document.createElement('div');
-                    splitWrapper.className = "w-10 flex flex-col items-center justify-center group cursor-pointer shrink-0 mx-0.5";
+                    splitWrapper.className = "w-12 flex flex-col items-center justify-center group cursor-pointer shrink-0 mx-0.5";
                     
                     const lineTop = document.createElement('div');
-                    lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
+                    lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
                     
                     const iconBtn = document.createElement('div');
-                    iconBtn.className = "w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-100 transition-colors my-1 z-10 shadow-sm";
+                    iconBtn.className = "w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
                     iconBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
-                        </svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
                     `;
                     
                     const lineBottom = document.createElement('div');
-                    lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
+                    lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
 
                     splitWrapper.appendChild(lineTop);
                     splitWrapper.appendChild(iconBtn);
@@ -372,14 +481,14 @@
                         const isCut = visualSplitPoints.has(i);
                         if (isCut) {
                             visualSplitPoints.delete(i);
-                            lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
-                            lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors";
-                            iconBtn.className = "w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 group-hover:text-blue-600 group-hover:bg-blue-100 transition-colors my-1 z-10 shadow-sm";
+                            lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                            lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                            iconBtn.className = "w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
                         } else {
                             visualSplitPoints.add(i);
-                            lineTop.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors";
-                            lineBottom.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors";
-                            iconBtn.className = "w-7 h-7 rounded-full bg-red-100 flex items-center justify-center text-red-600 transition-colors my-1 z-10 shadow-sm";
+                            lineTop.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
+                            lineBottom.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
+                            iconBtn.className = "w-8 h-8 rounded-full bg-red-500 border border-red-500 flex items-center justify-center text-white transition-all my-1 z-10 shadow-md transform scale-110";
                         }
                     };
 
@@ -397,55 +506,50 @@
             if (files.length === 0) return;
             const pages = files[0].pages;
             
-            // ロード中の表示
             const loadingMsg = document.createElement('div');
-            loadingMsg.className = "text-sm text-slate-500 p-4 w-full text-center";
-            loadingMsg.innerHTML = '<div class="inline-block animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent mr-2 align-middle"></div>ページのプレビューを生成中...';
+            loadingMsg.className = "text-sm text-slate-500 p-8 w-full text-center flex items-center justify-center";
+            loadingMsg.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent mr-3"></div>プレビューを生成中...';
             container.appendChild(loadingMsg);
 
             try {
-                // PDF.jsでドキュメント全体を読み込む
                 const loadingTask = pdfjsLib.getDocument({ data: files[0].data.slice(0) });
                 const pdf = await loadingTask.promise;
-                
-                container.innerHTML = ''; // ローディング消去
+                container.innerHTML = '';
 
                 for (let i = 1; i <= pages; i++) {
                     const pageWrapper = document.createElement('div');
-                    // サムネイルが見やすいようにサイズを少し大きく（w-24 h-32）
-                    pageWrapper.className = "w-24 h-32 bg-white border border-slate-300 rounded shadow-sm flex flex-col items-center justify-center shrink-0 relative cursor-pointer hover:border-red-400 transition-all overflow-hidden";
+                    pageWrapper.className = "w-[104px] h-[146px] bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative cursor-pointer hover:shadow-md hover:border-slate-300 transition-all overflow-hidden group";
                     
                     pageWrapper.innerHTML = `
-                        <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container">
-                            <span class="text-[10px] font-bold text-slate-400">Loading...</span>
+                        <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container p-1">
+                            <span class="text-[10px] font-bold text-slate-300">Loading...</span>
                         </div>
-                        <span class="absolute top-1 left-1 bg-white/90 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 rounded shadow-sm z-10 border border-slate-200">P.${i}</span>
-                        <div class="overlay hidden absolute inset-0 bg-red-100/80 flex items-center justify-center z-20">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-red-600 drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <span class="absolute top-1.5 left-1.5 bg-slate-800/80 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold rounded-md z-10 transition-opacity">P.${i}</span>
+                        
+                        <div class="overlay hidden absolute inset-0 bg-red-500/80 backdrop-blur-sm flex items-center justify-center z-20 transition-all">
+                            <div class="bg-white rounded-full p-2 shadow-lg transform scale-110">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </div>
                         </div>
+                        <div class="hover-indicator absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
                     `;
                     
                     pageWrapper.onclick = () => {
                         const overlay = pageWrapper.querySelector('.overlay');
                         if (visualRemovePoints.has(i)) {
                             visualRemovePoints.delete(i);
-                            pageWrapper.classList.remove('border-red-500', 'ring-2', 'ring-red-500');
-                            pageWrapper.classList.add('border-slate-300');
+                            pageWrapper.classList.remove('ring-4', 'ring-red-200', 'border-red-500');
                             overlay.classList.add('hidden');
                         } else {
                             visualRemovePoints.add(i);
-                            pageWrapper.classList.remove('border-slate-300');
-                            pageWrapper.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+                            pageWrapper.classList.add('ring-4', 'ring-red-200', 'border-red-500');
                             overlay.classList.remove('hidden');
                         }
                     };
                     container.appendChild(pageWrapper);
 
-                    // 非同期で各ページのサムネイルを描画
                     pdf.getPage(i).then(async (page) => {
-                        const viewport = page.getViewport({ scale: 0.25 }); // サムネイル用に縮小
+                        const viewport = page.getViewport({ scale: 0.3 });
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
                         canvas.height = viewport.height;
@@ -454,22 +558,17 @@
                         
                         const imgUrl = canvas.toDataURL();
                         const previewContainer = pageWrapper.querySelector('.preview-container');
-                        previewContainer.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-full object-contain">`;
+                        previewContainer.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-full object-contain bg-white shadow-sm border border-slate-100 rounded">`;
                         
-                        // 画像が回転している場合（元のファイルの回転情報を適用）
                         const f = files[0];
-                        if (f.rotation !== 0) {
-                             previewContainer.querySelector('img').style.transform = `rotate(${f.rotation}deg)`;
-                        }
+                        if (f.rotation !== 0) previewContainer.querySelector('img').style.transform = `rotate(${f.rotation}deg)`;
                     }).catch(err => {
-                        console.error(`Page ${i} render error`, err);
                         const previewContainer = pageWrapper.querySelector('.preview-container');
                         previewContainer.innerHTML = `<span class="text-[10px] font-bold text-red-400">Error</span>`;
                     });
                 }
             } catch (err) {
-                console.error("Failed to render pages for removal", err);
-                container.innerHTML = '<span class="text-sm text-red-500 p-4">プレビューの生成に失敗しました。</span>';
+                container.innerHTML = '<div class="w-full text-center p-4"><span class="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">プレビューの生成に失敗しました。</span></div>';
             }
         }
 
@@ -503,7 +602,9 @@
                              (mode === 'split' && files.length === 1) ||
                              (mode === 'remove' && files.length === 1) ||
                              (mode === 'img2pdf' && files.length >= 1);
-            document.getElementById('processBtn').disabled = !canProcess;
+            
+            const btn = document.getElementById('processBtn');
+            btn.disabled = !canProcess;
             document.getElementById('resultArea').classList.add('hidden');
         }
 
@@ -527,8 +628,8 @@
                 else if (mode === 'img2pdf') await processImg2Pdf();
             } catch (err) {
                 console.error(err);
-                if (err.message !== 'No points selected' && err.message !== 'Invalid range' && err.message !== 'All pages removed') {
-                    showToast('処理中に致命的なエラーが発生しました。設定を確認してください。');
+                if (!['No points selected', 'Invalid range', 'All pages removed'].includes(err.message)) {
+                    showToast('処理中にエラーが発生しました。', "error");
                 }
             }
             showLoading(false);
@@ -549,11 +650,10 @@
             }
             const bytes = await mergedPdf.save();
             resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult('結合完了', '選択したすべてのPDFを1つのファイルにまとめました。', `merged_${Date.now()}.pdf`);
+            showResult('選択したPDFを1つに結合しました。', `merged_${Date.now()}.pdf`);
         }
 
         async function processSplit() {
-            if (files.length === 0) return;
             const f = files[0];
             const sourceDoc = await PDFDocument.load(f.data.slice(0));
             const total = sourceDoc.getPageCount();
@@ -564,110 +664,83 @@
                 for (let i = 0; i < total; i++) {
                     const newDoc = await PDFDocument.create();
                     const [page] = await newDoc.copyPages(sourceDoc, [i]);
-                    if (f.rotation !== 0) {
-                        const currentRot = page.getRotation().angle;
-                        page.setRotation(degrees(currentRot + f.rotation));
-                    }
+                    if (f.rotation !== 0) page.setRotation(degrees(page.getRotation().angle + f.rotation));
                     newDoc.addPage(page);
                     zip.file(`page_${i+1}.pdf`, await newDoc.save());
                 }
             } else if (splitType === 'visual') {
                 const points = Array.from(visualSplitPoints).sort((a, b) => a - b);
                 if (points.length === 0) {
-                    showToast('分割する場所（ハサミアイコン）をクリックして指定してください。');
+                    showToast('ハサミアイコンをクリックして分割位置を指定してください。', 'error');
                     throw new Error('No points selected');
                 }
-
                 const ranges = [];
                 let start = 1;
-                for (let p of points) {
-                    ranges.push({ start: start - 1, end: p - 1 });
-                    start = p + 1;
-                }
+                for (let p of points) { ranges.push({ start: start - 1, end: p - 1 }); start = p + 1; }
                 ranges.push({ start: start - 1, end: total - 1 });
 
                 for (let [idx, r] of ranges.entries()) {
                     const newDoc = await PDFDocument.create();
-                    const pagesToCopy = [];
-                    for (let p = r.start; p <= r.end; p++) pagesToCopy.push(p);
-
+                    const pagesToCopy = Array.from({length: r.end - r.start + 1}, (_, i) => r.start + i);
                     const copied = await newDoc.copyPages(sourceDoc, pagesToCopy);
                     copied.forEach(p => {
-                        if (f.rotation !== 0) {
-                            const currentRot = p.getRotation().angle;
-                            p.setRotation(degrees(currentRot + f.rotation));
-                        }
+                        if (f.rotation !== 0) p.setRotation(degrees(p.getRotation().angle + f.rotation));
                         newDoc.addPage(p);
                     });
-                    
-                    const startPage = r.start + 1;
-                    const endPage = r.end + 1;
-                    const fileName = startPage === endPage ? `page_${startPage}.pdf` : `pages_${startPage}-${endPage}.pdf`;
+                    const fileName = r.start === r.end ? `page_${r.start+1}.pdf` : `pages_${r.start+1}-${r.end+1}.pdf`;
                     zip.file(fileName, await newDoc.save());
                 }
             } else {
                 const rangeStr = document.getElementById('splitRangeInput').value;
                 const ranges = parseRanges(rangeStr, total);
                 if (ranges.length === 0) {
-                    showToast('有効な範囲を指定してください（例: 1-3, 5）');
+                    showToast('有効な範囲を指定してください (例: 1-3)', 'error');
                     throw new Error('Invalid range');
                 }
-                
                 for (let [idx, r] of ranges.entries()) {
                     const newDoc = await PDFDocument.create();
                     const copied = await newDoc.copyPages(sourceDoc, r);
                     copied.forEach(p => {
-                        if (f.rotation !== 0) {
-                            const currentRot = p.getRotation().angle;
-                            p.setRotation(degrees(currentRot + f.rotation));
-                        }
+                        if (f.rotation !== 0) p.setRotation(degrees(p.getRotation().angle + f.rotation));
                         newDoc.addPage(p);
                     });
-                    zip.file(`split_${idx+1}_range.pdf`, await newDoc.save());
+                    zip.file(`split_${idx+1}.pdf`, await newDoc.save());
                 }
             }
 
             resultBlob = await zip.generateAsync({ type: 'blob' });
-            showResult('分割完了', 'PDFを指定条件で分割しました。', `split_${f.name.replace('.pdf','')}.zip`);
+            showResult('PDFを指定条件で分割し、ZIPにまとめました。', `split_${f.name.replace('.pdf','')}.zip`);
         }
 
         async function processRemove() {
-            if (files.length === 0) return;
             const f = files[0];
             const sourceDoc = await PDFDocument.load(f.data.slice(0));
             const total = sourceDoc.getPageCount();
             
             if (visualRemovePoints.size === total) {
-                showToast('すべてのページを削除することはできません。少なくとも1ページ残す必要があります。');
+                showToast('少なくとも1ページは残す必要があります。', 'error');
                 throw new Error('All pages removed');
             }
             if (visualRemovePoints.size === 0) {
-                showToast('削除するページが選択されていません。');
+                showToast('削除するページが選択されていません。', 'error');
                 throw new Error('No points selected');
             }
 
             const newDoc = await PDFDocument.create();
             const pagesToKeep = [];
-            
-            // 削除対象になっていないページだけを抽出
             for (let i = 0; i < total; i++) {
-                if (!visualRemovePoints.has(i + 1)) {
-                    pagesToKeep.push(i);
-                }
+                if (!visualRemovePoints.has(i + 1)) pagesToKeep.push(i);
             }
 
             const copied = await newDoc.copyPages(sourceDoc, pagesToKeep);
-            copied.forEach((p, idx) => {
-                if (f.rotation !== 0) {
-                    const currentRot = p.getRotation().angle;
-                    p.setRotation(degrees(currentRot + f.rotation));
-                }
+            copied.forEach(p => {
+                if (f.rotation !== 0) p.setRotation(degrees(p.getRotation().angle + f.rotation));
                 newDoc.addPage(p);
             });
 
             const bytes = await newDoc.save();
             resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult('整理完了', `${visualRemovePoints.size}ページを削除し、新しいPDFを作成しました。`, `organized_${f.name}`);
+            showResult(`${visualRemovePoints.size}ページを削除し、再構築しました。`, `cleaned_${f.name}`);
         }
 
         async function processImg2Pdf() {
@@ -679,22 +752,16 @@
                     if (f.type === 'image/jpeg') img = await pdfDoc.embedJpg(f.data.slice(0));
                     else if (f.type === 'image/png') img = await pdfDoc.embedPng(f.data.slice(0));
                     else continue;
-                } catch (e) {
-                    console.error("Image embedding failed", e);
-                    continue;
-                }
+                } catch (e) { continue; }
 
                 const { width, height } = img.scale(1);
                 page.setSize(width, height);
                 page.drawImage(img, { x: 0, y: 0, width, height });
-                
-                if (f.rotation !== 0) {
-                    page.setRotation(degrees(f.rotation));
-                }
+                if (f.rotation !== 0) page.setRotation(degrees(f.rotation));
             }
             const bytes = await pdfDoc.save();
             resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult('変換完了', '画像ファイルをPDFドキュメントに変換しました。', `converted_${Date.now()}.pdf`);
+            showResult('画像ファイルをPDFドキュメントに変換しました。', `images_${Date.now()}.pdf`);
         }
 
         // --- Helpers ---
@@ -703,22 +770,20 @@
             return str.split(',').map(part => {
                 const range = part.trim().split('-').map(s => parseInt(s, 10));
                 if (range.length === 1 && !isNaN(range[0])) {
-                    const p = range[0];
-                    return (p >= 1 && p <= max) ? [p - 1] : null;
+                    const p = range[0]; return (p >= 1 && p <= max) ? [p - 1] : null;
                 }
                 if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
                     const start = Math.max(1, range[0]);
                     const end = Math.min(max, range[1]);
                     if (start > end) return null;
-                    let res = [];
-                    for(let i = start - 1; i < end; i++) res.push(i);
+                    let res = []; for(let i = start - 1; i < end; i++) res.push(i);
                     return res;
                 }
                 return null;
             }).filter(x => x !== null);
         }
 
-        function showResult(title, msg, filename) {
+        function showResult(msg, filename) {
             document.getElementById('resultArea').classList.remove('hidden');
             document.getElementById('resultInfo').textContent = msg;
             document.getElementById('downloadBtn').onclick = () => {
@@ -731,19 +796,42 @@
                 document.body.removeChild(a);
                 setTimeout(() => URL.revokeObjectURL(url), 100);
             };
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            setTimeout(() => {
+                document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
         }
 
         function showLoading(show, text = "処理中...") {
             document.getElementById('loadingText').textContent = text;
-            document.getElementById('loadingOverlay').classList.toggle('hidden', !show);
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.style.display = 'flex';
+                // Trigger reflow
+                void overlay.offsetWidth;
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-100');
+            } else {
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+            }
         }
 
-        function showToast(msg) {
+        function showToast(msg, type = 'info') {
             const t = document.getElementById('toast');
             document.getElementById('toastMsg').textContent = msg;
-            t.classList.replace('opacity-0', 'opacity-100');
-            setTimeout(() => t.classList.replace('opacity-100', 'opacity-0'), 4000);
+            
+            const icon = document.getElementById('toastIcon');
+            if (type === 'error') {
+                t.classList.replace('bg-slate-800', 'bg-red-600');
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>`;
+            } else {
+                t.classList.replace('bg-red-600', 'bg-slate-800');
+                icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>`;
+            }
+
+            t.classList.remove('opacity-0', 'translate-y-4');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-4'), 4000);
         }
     </script>
 </body>
