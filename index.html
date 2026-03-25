@@ -159,7 +159,9 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
                         ハサミを入れて分割
                     </h3>
-                    <p class="text-sm text-slate-500 mb-4 bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-100">ページ間のアイコンをクリックして、分割位置を指定してください。</p>
+                    <p class="text-sm text-slate-500 mb-4 bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-100 flex items-center justify-between">
+                        <span>ページ間のアイコンをクリックして、分割位置を指定してください。</span>
+                    </p>
                     <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-x-auto custom-scrollbar min-h-[260px]">
                         <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-4 pt-2 px-2 h-full">
                             <!-- JS Generated Content -->
@@ -169,12 +171,20 @@
 
                 <!-- Remove Workspace -->
                 <div id="remove-options" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
-                    <h3 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        不要なページを削除
-                    </h3>
-                    <p class="text-sm text-slate-500 mb-4 bg-red-50 text-red-800 p-3 rounded-lg border border-red-100">クリックして、<span class="font-bold">削除したいページ（赤色）</span>を選択してください。</p>
-                    <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-y-auto max-h-[400px] custom-scrollbar">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            不要なページを削除
+                        </h3>
+                        <span class="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                            アイコンで拡大表示
+                        </span>
+                    </div>
+                    <p class="text-sm text-slate-500 mb-4 bg-red-50 text-red-800 p-3 rounded-lg border border-red-100">
+                        クリックして、<span class="font-bold">削除したいページ（赤枠）</span>を選択してください。
+                    </p>
+                    <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-y-auto max-h-[450px] custom-scrollbar">
                         <div id="visualRemoveContainer" class="flex flex-wrap gap-4 pb-2 pt-1 justify-center md:justify-start">
                             <!-- JS Generated Content -->
                         </div>
@@ -237,6 +247,23 @@
             </div>
         </div>
     </main>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4 transition-opacity opacity-0" onclick="closePreviewModal()">
+        <div class="bg-white rounded-2xl shadow-2xl flex flex-col max-h-[90vh] max-w-4xl w-full overflow-hidden" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200">
+                <h3 id="previewModalTitle" class="text-lg font-bold text-slate-800">ページプレビュー</h3>
+                <button onclick="closePreviewModal()" class="text-slate-400 hover:text-slate-600 p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="p-6 flex-1 overflow-auto flex items-center justify-center bg-slate-100 min-h-[50vh]">
+                <div id="previewModalContent" class="relative">
+                    <!-- Image injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md hidden flex-col items-center justify-center z-50 text-white transition-opacity">
@@ -394,6 +421,47 @@
             }
         }
 
+        // --- Preview Modal ---
+        async function openPreviewModal(pageNum, fileObj) {
+            const modal = document.getElementById('previewModal');
+            const title = document.getElementById('previewModalTitle');
+            const content = document.getElementById('previewModalContent');
+            
+            title.textContent = `ページ ${pageNum} のプレビュー`;
+            content.innerHTML = '<div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent my-10 mx-auto"></div>';
+            
+            modal.style.display = 'flex';
+            void modal.offsetWidth; // Reflow
+            modal.classList.replace('opacity-0', 'opacity-100');
+
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: fileObj.data.slice(0) });
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(pageNum);
+                
+                // 高解像度でレンダリング
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                const imgUrl = canvas.toDataURL();
+                content.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-[75vh] object-contain shadow-sm border border-slate-200 bg-white" style="transform: rotate(${fileObj.rotation}deg)">`;
+                
+            } catch (err) {
+                console.error("High-res preview failed", err);
+                content.innerHTML = '<span class="text-red-500 font-bold">プレビューの読み込みに失敗しました。</span>';
+            }
+        }
+
+        function closePreviewModal() {
+            const modal = document.getElementById('previewModal');
+            modal.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => { modal.style.display = 'none'; }, 300);
+        }
+
         function renderFileList() {
             fileListContainer.innerHTML = '';
             emptyState.style.display = files.length === 0 ? 'flex' : 'none';
@@ -463,14 +531,23 @@
 
                 for (let i = 1; i <= pages; i++) {
                     const pageCard = document.createElement('div');
-                    pageCard.className = "w-32 h-44 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative transition-all overflow-hidden";
+                    pageCard.className = "w-32 h-44 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative transition-all overflow-hidden group";
                     pageCard.innerHTML = `
                         <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container p-1">
                             <span class="text-[10px] font-bold text-slate-300">Loading...</span>
                         </div>
                         <span class="absolute top-1.5 left-1.5 bg-slate-800/80 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold rounded-md z-10 transition-opacity">P.${i}</span>
+                        
+                        <button class="preview-btn absolute top-1.5 right-1.5 bg-white/90 text-slate-600 hover:text-blue-600 p-1.5 rounded-lg shadow-sm z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-50" title="拡大プレビュー">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                        </button>
                     `;
                     container.appendChild(pageCard);
+                    
+                    pageCard.querySelector('.preview-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        openPreviewModal(i, files[0]);
+                    };
                     
                     pdf.getPage(i).then(async (page) => {
                         const viewport = page.getViewport({ scale: 0.4 });
@@ -555,7 +632,7 @@
 
                 for (let i = 1; i <= pages; i++) {
                     const pageWrapper = document.createElement('div');
-                    pageWrapper.className = "w-[104px] h-[146px] bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative cursor-pointer hover:shadow-md hover:border-slate-300 transition-all overflow-hidden group";
+                    pageWrapper.className = "w-[120px] h-[168px] bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative cursor-pointer hover:shadow-md hover:border-slate-300 transition-all overflow-hidden group";
                     
                     pageWrapper.innerHTML = `
                         <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container p-1">
@@ -563,30 +640,41 @@
                         </div>
                         <span class="absolute top-1.5 left-1.5 bg-slate-800/80 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold rounded-md z-10 transition-opacity">P.${i}</span>
                         
-                        <div class="overlay hidden absolute inset-0 bg-red-500/80 backdrop-blur-sm flex items-center justify-center z-20 transition-all">
-                            <div class="bg-white rounded-full p-2 shadow-lg transform scale-110">
+                        <button class="preview-btn absolute top-1.5 right-1.5 bg-white/90 text-slate-600 hover:text-blue-600 p-1.5 rounded-lg shadow-sm z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-50" title="拡大プレビュー">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                        </button>
+                        
+                        <!-- 透ける赤い背景と中央アイコン -->
+                        <div class="overlay hidden absolute inset-0 border-4 border-red-500 bg-red-500/20 flex items-center justify-center z-20 transition-all pointer-events-none rounded-xl">
+                            <div class="bg-white/90 rounded-full p-2 shadow-lg transform scale-110">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
                             </div>
                         </div>
                         <div class="hover-indicator absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
                     `;
                     
+                    // ページ選択イベント
                     pageWrapper.onclick = () => {
                         const overlay = pageWrapper.querySelector('.overlay');
                         if (visualRemovePoints.has(i)) {
                             visualRemovePoints.delete(i);
-                            pageWrapper.classList.remove('ring-4', 'ring-red-200', 'border-red-500');
                             overlay.classList.add('hidden');
                         } else {
                             visualRemovePoints.add(i);
-                            pageWrapper.classList.add('ring-4', 'ring-red-200', 'border-red-500');
                             overlay.classList.remove('hidden');
                         }
                     };
+
+                    // 拡大プレビューイベント
+                    pageWrapper.querySelector('.preview-btn').onclick = (e) => {
+                        e.stopPropagation(); // ページ選択がトリガーされるのを防ぐ
+                        openPreviewModal(i, files[0]);
+                    };
+
                     container.appendChild(pageWrapper);
 
                     pdf.getPage(i).then(async (page) => {
-                        const viewport = page.getViewport({ scale: 0.3 });
+                        const viewport = page.getViewport({ scale: 0.35 });
                         const canvas = document.createElement('canvas');
                         const context = canvas.getContext('2d');
                         canvas.height = viewport.height;
