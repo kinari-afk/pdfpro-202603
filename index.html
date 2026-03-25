@@ -154,6 +154,10 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
                     複数配置
                 </button>
+                <button onclick="setMode('compress')" id="tab-compress" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-500 whitespace-nowrap flex-1 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                    圧縮
+                </button>
             </div>
         </div>
     </header>
@@ -186,6 +190,54 @@
                             </div>
                             <p class="text-base font-semibold text-slate-700 mb-1">クリックまたはドロップ</p>
                             <p id="accept-label" class="text-xs text-slate-400 uppercase tracking-wider font-medium bg-slate-100 px-3 py-1 rounded-full mt-2">PDFファイル</p>
+                        </div>
+                    </div>
+
+                    <!-- Compress Settings -->
+                    <div id="compress-options" class="hidden pt-6 mt-4 animate-fadeIn">
+                        <div class="bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 text-sm mb-4 shadow-sm">
+                            <span class="font-bold flex items-center gap-1 mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                                圧縮の仕組みについて
+                            </span>
+                            ブラウザ上での処理の制限により、テキスト（文字データ）を保持したまま写真や画像の容量だけを圧縮することはできません。<br>
+                            大幅にファイルサイズを減らしたい場合は、文字のコピーができなくなりますが<span class="font-bold">「画像化圧縮」</span>をご利用ください。
+                        </div>
+                        
+                        <h3 class="text-sm font-bold text-slate-800 mb-3 ml-1">圧縮モードの選択</h3>
+                        <div class="space-y-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <!-- テキスト保持 -->
+                            <label class="flex items-start p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
+                                <input type="radio" name="compressMode" value="keep_text" class="w-4 h-4 text-blue-600 mt-0.5 mr-3"> 
+                                <div>
+                                    <span class="font-bold text-slate-700 text-sm">テキスト保持（圧縮率：低）</span>
+                                    <p class="text-xs text-slate-500 mt-1">メタデータや不要な内部構造のみを削除します。文字はコピー可能ですが、画像が多いファイルではほとんどサイズが変わりません。</p>
+                                </div>
+                            </label>
+                            
+                            <!-- 画像化圧縮 -->
+                            <label class="flex items-start p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
+                                <input type="radio" name="compressMode" value="image" checked class="w-4 h-4 text-blue-600 mt-0.5 mr-3"> 
+                                <div class="w-full">
+                                    <span class="font-bold text-slate-700 text-sm">画像化圧縮（圧縮率：中〜高）</span>
+                                    <p class="text-xs text-slate-500 mt-1 mb-3">全ページを画像に変換して再構築します。文字のコピーはできなくなりますが、サイズを大幅に削減できます。</p>
+                                    
+                                    <div class="flex gap-2">
+                                        <label class="flex-1 flex items-center justify-center text-xs cursor-pointer p-2 bg-slate-50 rounded border border-slate-200 hover:border-blue-400 transition-colors">
+                                            <input type="radio" name="compressQuality" value="high" class="hidden peer"> 
+                                            <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500 text-center">高画質<br><span class="text-[10px] font-normal">(重め)</span></div>
+                                        </label>
+                                        <label class="flex-1 flex items-center justify-center text-xs cursor-pointer p-2 bg-slate-50 rounded border border-slate-200 hover:border-blue-400 transition-colors">
+                                            <input type="radio" name="compressQuality" value="medium" checked class="hidden peer"> 
+                                            <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500 text-center">標準<br><span class="text-[10px] font-normal">(バランス)</span></div>
+                                        </label>
+                                        <label class="flex-1 flex items-center justify-center text-xs cursor-pointer p-2 bg-slate-50 rounded border border-slate-200 hover:border-blue-400 transition-colors">
+                                            <input type="radio" name="compressQuality" value="low" class="hidden peer"> 
+                                            <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500 text-center">低画質<br><span class="text-[10px] font-normal">(軽い)</span></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
@@ -428,9 +480,18 @@
 
                     <!-- PDF Viewer Area (Height expanded) -->
                     <div id="pdfEditorContainer" class="relative overflow-auto bg-slate-200/80 rounded-2xl border border-slate-300 flex-grow min-h-[700px] h-[85vh] flex justify-center custom-scrollbar p-6 shadow-inner transition-all duration-300">
-                        <div id="pdfPageWrapper" class="relative shadow-xl bg-white origin-top" style="width: max-content; height: max-content;">
+                        <div id="pdfPageWrapper" class="relative shadow-xl bg-white origin-top hidden" style="width: max-content; height: max-content;">
                             <canvas id="writePdfCanvas" class="block"></canvas>
                             <div id="writeAnnotationLayer" class="absolute inset-0 cursor-crosshair"></div>
+                        </div>
+                        <div id="writeEmptyState" class="flex flex-col items-center justify-center text-slate-400 w-full h-full">
+                            <div class="bg-white p-4 rounded-full shadow-sm mb-4">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <p class="font-medium">PDFファイルが選択されていません</p>
+                            <p class="text-xs mt-1">「ファイルの追加」からPDFを読み込んでください。</p>
                         </div>
                     </div>
                 </div>
@@ -538,7 +599,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
         const { PDFDocument, rgb, degrees } = PDFLib;
 
-        let mode = 'write'; // 'merge', 'nup', 'split', 'remove', 'write', 'pdf2img', 'img2pdf'
+        let mode = 'write'; // 'merge', 'nup', 'split', 'remove', 'write', 'pdf2img', 'img2pdf', 'compress'
         let files = []; 
         let resultBlob = null;
         let visualSplitPoints = new Set();
@@ -561,7 +622,8 @@
             'remove': 'PDFから不要なページをプレビューを見ながら選択して削除します。',
             'write': 'PDF上に直接テキストを書き込みます。書き込みたい場所をクリックしてください。',
             'pdf2img': 'PDFの各ページを個別の画像ファイル（JPG/PNG）に変換してZIPでダウンロードします。',
-            'img2pdf': 'JPGやPNGの画像ファイルを読み込み、PDFドキュメントに変換します。'
+            'img2pdf': 'JPGやPNGの画像ファイルを読み込み、PDFドキュメントに変換します。',
+            'compress': 'PDFのファイルサイズを縮小します。用途に合わせて圧縮モードを選択してください。'
         };
 
         // Split Type Toggle
@@ -704,6 +766,7 @@
             document.getElementById('remove-options').style.display = mode === 'remove' ? 'block' : 'none';
             document.getElementById('nup-options').style.display = mode === 'nup' ? 'block' : 'none';
             document.getElementById('pdf2img-options').style.display = mode === 'pdf2img' ? 'block' : 'none';
+            document.getElementById('compress-options').style.display = mode === 'compress' ? 'block' : 'none';
             
             const fileListPanel = document.getElementById('fileListPanel');
             const writeWorkspace = document.getElementById('writeWorkspace');
@@ -775,7 +838,7 @@
             
             // --- リストのクリア判定を賢くする ---
             if (oldMode !== newMode) {
-                const isSingleMode = (newMode === 'split' || newMode === 'remove' || newMode === 'write' || newMode === 'pdf2img');
+                const isSingleMode = (newMode === 'split' || newMode === 'remove' || newMode === 'write' || newMode === 'pdf2img' || newMode === 'compress');
                 const isImgMode = (newMode === 'img2pdf');
                 const wasImgMode = (oldMode === 'img2pdf');
                 
@@ -808,8 +871,8 @@
 
         async function handleFiles(newFiles) {
             if (newFiles.length === 0) return;
-            // Split, Remove, Write, Pdf2Img requires single file
-            if ((mode === 'split' || mode === 'remove' || mode === 'write' || mode === 'pdf2img') && files.length > 0) {
+            // Split, Remove, Write, Pdf2Img, Compress requires single file
+            if ((mode === 'split' || mode === 'remove' || mode === 'write' || mode === 'pdf2img' || mode === 'compress') && files.length > 0) {
                 showToast(`${modeDescriptions[mode].split('。')[0]} リストをクリアしました。`, "info");
                 clearAll();
             }
@@ -818,7 +881,7 @@
 
             let addCount = 0;
             for (let f of newFiles) {
-                if ((mode === 'split' || mode === 'remove' || mode === 'write' || mode === 'pdf2img') && addCount > 0) break;
+                if ((mode === 'split' || mode === 'remove' || mode === 'write' || mode === 'pdf2img' || mode === 'compress') && addCount > 0) break;
                 
                 if (mode === 'img2pdf' && !f.type.startsWith('image/')) continue;
                 if (mode !== 'img2pdf' && f.type !== 'application/pdf') continue;
@@ -878,6 +941,9 @@
         // --- Write Mode Functions ---
         async function loadWritePdf(arrayBuffer) {
             try {
+                document.getElementById('pdfPageWrapper').classList.remove('hidden');
+                document.getElementById('writeEmptyState').classList.add('hidden');
+
                 pdfDocProxy = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
                 totalWritePages = pdfDocProxy.numPages;
                 currentWritePage = 1;
@@ -1427,6 +1493,7 @@
                              (mode === 'write' && files.length === 1) ||
                              (mode === 'nup' && files.length >= 1) ||
                              (mode === 'pdf2img' && files.length === 1) ||
+                             (mode === 'compress' && files.length === 1) ||
                              (mode === 'img2pdf' && files.length >= 1);
             
             const btn = document.getElementById('processBtn');
@@ -1442,6 +1509,12 @@
             writeAnnotations = {};
             const writeLayer = document.getElementById('writeAnnotationLayer');
             if (writeLayer) writeLayer.innerHTML = '';
+            
+            const wrapper = document.getElementById('pdfPageWrapper');
+            if (wrapper) wrapper.classList.add('hidden');
+            const emptyState = document.getElementById('writeEmptyState');
+            if (emptyState) emptyState.classList.remove('hidden');
+
             renderFileList();
             updateStats();
         }
@@ -1458,6 +1531,7 @@
                 else if (mode === 'write') await processWrite();
                 else if (mode === 'pdf2img') await processPdf2Img();
                 else if (mode === 'img2pdf') await processImg2Pdf();
+                else if (mode === 'compress') await processCompress();
             } catch (err) {
                 console.error(err);
                 if (!['No points selected', 'Invalid range', 'All pages removed'].includes(err.message)) {
@@ -1466,6 +1540,89 @@
             }
             showLoading(false);
         };
+
+        async function processCompress() {
+            const f = files[0];
+            const compressMode = document.querySelector('input[name="compressMode"]:checked').value;
+            
+            if (compressMode === 'keep_text') {
+                showLoading(true, "テキスト保持で最適化中...");
+                const doc = await PDFDocument.load(f.data.slice(0));
+                doc.setTitle('');
+                doc.setAuthor('');
+                doc.setSubject('');
+                doc.setKeywords([]);
+                doc.setProducer('');
+                doc.setCreator('');
+                const bytes = await doc.save({ useObjectStreams: true });
+                resultBlob = new Blob([bytes], { type: 'application/pdf' });
+            } else {
+                const qualitySetting = document.querySelector('input[name="compressQuality"]:checked').value;
+                let scale = 1.5;
+                let jpegQuality = 0.65;
+
+                if (qualitySetting === 'high') {
+                    scale = 2.0;
+                    jpegQuality = 0.85;
+                } else if (qualitySetting === 'medium') {
+                    scale = 1.5;
+                    jpegQuality = 0.65;
+                } else if (qualitySetting === 'low') {
+                    scale = 1.0;
+                    jpegQuality = 0.4;
+                }
+
+                // 強力圧縮（画像化）
+                const loadingTask = pdfjsLib.getDocument({ data: f.data.slice(0) });
+                const pdf = await loadingTask.promise;
+                const totalPages = pdf.numPages;
+                
+                const newPdf = await PDFDocument.create();
+                
+                for (let i = 1; i <= totalPages; i++) {
+                    showLoading(true, `画像化圧縮中... (${i}/${totalPages} ページ)`);
+                    const page = await pdf.getPage(i);
+                    
+                    // ユーザーの回転情報を加味
+                    let viewport = page.getViewport({ scale: scale });
+                    if (f.rotation !== 0) {
+                       viewport = page.getViewport({ scale: scale, rotation: viewport.rotation + f.rotation });
+                    }
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                    
+                    // JPEGとして圧縮
+                    const imgDataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
+                    
+                    const img = await newPdf.embedJpg(imgDataUrl);
+                    // スケールを元に戻してPDFに配置
+                    const { width, height } = img.scale(1 / scale); 
+                    
+                    const newPage = newPdf.addPage([width, height]);
+                    newPage.drawImage(img, {
+                        x: 0,
+                        y: 0,
+                        width: width,
+                        height: height,
+                    });
+                }
+                const bytes = await newPdf.save();
+                resultBlob = new Blob([bytes], { type: 'application/pdf' });
+            }
+            
+            const beforeSize = (f.data.byteLength / 1024 / 1024).toFixed(2);
+            const afterSize = (resultBlob.size / 1024 / 1024).toFixed(2);
+            
+            showResult(`圧縮完了: ${beforeSize}MB → ${afterSize}MB`, `compressed_${f.name}`);
+        }
 
         async function processMerge() {
             const mergedPdf = await PDFDocument.create();
