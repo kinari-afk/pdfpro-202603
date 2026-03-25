@@ -160,8 +160,8 @@
                         ハサミを入れて分割
                     </h3>
                     <p class="text-sm text-slate-500 mb-4 bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-100">ページ間のアイコンをクリックして、分割位置を指定してください。</p>
-                    <div class="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-x-auto custom-scrollbar">
-                        <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-3 pt-2 px-2">
+                    <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-x-auto custom-scrollbar min-h-[260px]">
+                        <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-4 pt-2 px-2 h-full">
                             <!-- JS Generated Content -->
                         </div>
                     </div>
@@ -443,7 +443,7 @@
         }
 
         // --- Visual Splitter Rendering ---
-        function renderVisualSplitter() {
+        async function renderVisualSplitter() {
             const container = document.getElementById('visualSplitContainer');
             container.innerHTML = '';
             visualSplitPoints.clear();
@@ -451,49 +451,86 @@
             if (files.length === 0) return;
             const pages = files[0].pages;
 
-            for (let i = 1; i <= pages; i++) {
-                const pageCard = document.createElement('div');
-                pageCard.className = "w-20 h-28 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative transition-all";
-                pageCard.innerHTML = `<span class="text-sm font-black text-slate-300">P.${i}</span>`;
-                container.appendChild(pageCard);
-                
-                if (i < pages) {
-                    const splitWrapper = document.createElement('div');
-                    splitWrapper.className = "w-12 flex flex-col items-center justify-center group cursor-pointer shrink-0 mx-0.5";
-                    
-                    const lineTop = document.createElement('div');
-                    lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
-                    
-                    const iconBtn = document.createElement('div');
-                    iconBtn.className = "w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
-                    iconBtn.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = "text-sm text-slate-500 p-8 w-full text-center flex items-center justify-center";
+            loadingMsg.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent mr-3"></div>プレビューを生成中...';
+            container.appendChild(loadingMsg);
+
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: files[0].data.slice(0) });
+                const pdf = await loadingTask.promise;
+                container.innerHTML = '';
+
+                for (let i = 1; i <= pages; i++) {
+                    const pageCard = document.createElement('div');
+                    pageCard.className = "w-32 h-44 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative transition-all overflow-hidden";
+                    pageCard.innerHTML = `
+                        <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container p-1">
+                            <span class="text-[10px] font-bold text-slate-300">Loading...</span>
+                        </div>
+                        <span class="absolute top-1.5 left-1.5 bg-slate-800/80 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold rounded-md z-10 transition-opacity">P.${i}</span>
                     `;
+                    container.appendChild(pageCard);
                     
-                    const lineBottom = document.createElement('div');
-                    lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                    pdf.getPage(i).then(async (page) => {
+                        const viewport = page.getViewport({ scale: 0.4 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        
+                        const imgUrl = canvas.toDataURL();
+                        const previewContainer = pageCard.querySelector('.preview-container');
+                        previewContainer.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-full object-contain bg-white shadow-sm border border-slate-100 rounded">`;
+                        
+                        const f = files[0];
+                        if (f.rotation !== 0) previewContainer.querySelector('img').style.transform = `rotate(${f.rotation}deg)`;
+                    }).catch(err => {
+                        const previewContainer = pageCard.querySelector('.preview-container');
+                        previewContainer.innerHTML = `<span class="text-[10px] font-bold text-red-400">Error</span>`;
+                    });
 
-                    splitWrapper.appendChild(lineTop);
-                    splitWrapper.appendChild(iconBtn);
-                    splitWrapper.appendChild(lineBottom);
+                    if (i < pages) {
+                        const splitWrapper = document.createElement('div');
+                        splitWrapper.className = "w-14 flex flex-col items-center justify-center group cursor-pointer shrink-0 mx-1";
+                        
+                        const lineTop = document.createElement('div');
+                        lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                        
+                        const iconBtn = document.createElement('div');
+                        iconBtn.className = "w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
+                        iconBtn.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
+                        `;
+                        
+                        const lineBottom = document.createElement('div');
+                        lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
 
-                    splitWrapper.onclick = () => {
-                        const isCut = visualSplitPoints.has(i);
-                        if (isCut) {
-                            visualSplitPoints.delete(i);
-                            lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
-                            lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
-                            iconBtn.className = "w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
-                        } else {
-                            visualSplitPoints.add(i);
-                            lineTop.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
-                            lineBottom.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
-                            iconBtn.className = "w-8 h-8 rounded-full bg-red-500 border border-red-500 flex items-center justify-center text-white transition-all my-1 z-10 shadow-md transform scale-110";
-                        }
-                    };
+                        splitWrapper.appendChild(lineTop);
+                        splitWrapper.appendChild(iconBtn);
+                        splitWrapper.appendChild(lineBottom);
 
-                    container.appendChild(splitWrapper);
+                        splitWrapper.onclick = () => {
+                            const isCut = visualSplitPoints.has(i);
+                            if (isCut) {
+                                visualSplitPoints.delete(i);
+                                lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                                lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                                iconBtn.className = "w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
+                            } else {
+                                visualSplitPoints.add(i);
+                                lineTop.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
+                                lineBottom.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
+                                iconBtn.className = "w-10 h-10 rounded-full bg-red-500 border border-red-500 flex items-center justify-center text-white transition-all my-1 z-10 shadow-md transform scale-110";
+                            }
+                        };
+
+                        container.appendChild(splitWrapper);
+                    }
                 }
+            } catch (err) {
+                container.innerHTML = '<div class="w-full text-center p-4"><span class="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">プレビューの生成に失敗しました。</span></div>';
             }
         }
 
