@@ -43,8 +43,8 @@
         /* 書き込みモードのテキストアノテーション用スタイル */
         .annotation-textarea {
             display: block;
-            background: rgba(255, 255, 255, 0.7);
-            border: 1px dashed #64748b;
+            background: transparent;
+            border: 1px dashed transparent;
             padding: 4px 6px;
             font-family: sans-serif;
             line-height: 1.5;
@@ -55,6 +55,10 @@
             min-width: 40px;
             min-height: 24px;
             transition: background 0.2s, border-color 0.2s;
+        }
+        .annotation-wrapper:hover .annotation-textarea {
+            border-color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.3);
         }
         .annotation-textarea:focus {
             background: rgba(255, 255, 255, 0.95);
@@ -473,8 +477,8 @@
                     <div class="bg-indigo-50 text-indigo-800 p-4 rounded-xl border border-indigo-100 text-sm mb-4 flex items-start gap-3 shadow-sm">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <div>
-                            <p class="font-bold mb-1">書き込みたい場所をクリック！</p>
-                            <p class="text-indigo-700">自動でテキストボックスが配置されます。左上の<span class="font-bold">「≡」アイコンで移動</span>、右下をドラッグで幅の調整（自動改行）ができます。</p>
+                            <p class="font-bold mb-1">クリック、またはドラッグして入力枠を作成！</p>
+                            <p class="text-indigo-700">ドラッグして背景の罫線や枠に合わせたサイズのテキストボックスを作れます。<span class="font-bold">「≡」アイコンで移動</span>、右下をドラッグでサイズの再調整が可能です。</p>
                         </div>
                     </div>
 
@@ -638,9 +642,72 @@
 
             // 書き込みレイヤーのクリックイベント設定
             const layer = document.getElementById('writeAnnotationLayer');
-            layer.addEventListener('click', (e) => {
+            
+            let isDrawingRect = false;
+            let startX = 0, startY = 0;
+            let drawRect = null;
+
+            layer.addEventListener('mousedown', (e) => {
                 if (e.target !== layer) return; // テキストエリア等のクリックは無視
-                addWriteAnnotation(currentWritePage, e.offsetX, e.offsetY);
+                isDrawingRect = true;
+                startX = e.offsetX;
+                startY = e.offsetY;
+                
+                drawRect = document.createElement('div');
+                drawRect.className = 'absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none rounded';
+                drawRect.style.left = `${startX}px`;
+                drawRect.style.top = `${startY}px`;
+                drawRect.style.width = '0px';
+                drawRect.style.height = '0px';
+                layer.appendChild(drawRect);
+            });
+
+            layer.addEventListener('mousemove', (e) => {
+                if (!isDrawingRect) return;
+                const currentX = e.offsetX;
+                const currentY = e.offsetY;
+                
+                const width = Math.abs(currentX - startX);
+                const height = Math.abs(currentY - startY);
+                const left = Math.min(startX, currentX);
+                const top = Math.min(startY, currentY);
+                
+                drawRect.style.left = `${left}px`;
+                drawRect.style.top = `${top}px`;
+                drawRect.style.width = `${width}px`;
+                drawRect.style.height = `${height}px`;
+            });
+
+            layer.addEventListener('mouseup', (e) => {
+                if (!isDrawingRect) return;
+                isDrawingRect = false;
+                
+                if (drawRect && drawRect.parentNode) {
+                    drawRect.parentNode.removeChild(drawRect);
+                }
+                
+                const endX = e.offsetX;
+                const endY = e.offsetY;
+                
+                const width = Math.abs(endX - startX);
+                const height = Math.abs(endY - startY);
+                const left = Math.min(startX, endX);
+                const top = Math.min(startY, endY);
+
+                // ドラッグ量が小さい場合は通常のクリックとして処理
+                if (width < 10 || height < 10) {
+                    addWriteAnnotation(currentWritePage, startX, startY);
+                } else {
+                    // ドラッグ範囲で作成
+                    addWriteAnnotation(currentWritePage, left, top, width, height);
+                }
+            });
+
+            layer.addEventListener('mouseleave', () => {
+                if(isDrawingRect) {
+                    isDrawingRect = false;
+                    if (drawRect && drawRect.parentNode) drawRect.parentNode.removeChild(drawRect);
+                }
             });
 
             // 書き込みツールバーのイベント設定
@@ -1041,7 +1108,7 @@
             }
         }
 
-        function addWriteAnnotation(pageNum, x, y) {
+        function addWriteAnnotation(pageNum, x, y, customWidth = null, customHeight = null) {
             if (!writeAnnotations[pageNum]) writeAnnotations[pageNum] = [];
             const id = Date.now().toString();
             
@@ -1050,13 +1117,16 @@
             const fontSize = parseInt(document.getElementById('annFontSize').value) || 14;
             const fontFamily = document.getElementById('annFontFamily').value;
 
+            const w = customWidth !== null ? customWidth / writeCurrentScale : 300 / writeCurrentScale;
+            const h = customHeight !== null ? customHeight / writeCurrentScale : (fontSize * 1.5 + 10) / writeCurrentScale;
+
             // 内部データは Scale 1.0 のサイズで保存する
             const ann = { 
                 id, 
                 x: x / writeCurrentScale, 
                 y: y / writeCurrentScale, 
-                width: 300 / writeCurrentScale, // 初期幅を少し広めに
-                height: (fontSize * 1.5 + 10) / writeCurrentScale, 
+                width: w, 
+                height: h, 
                 text: '',
                 color,
                 fontSize,
