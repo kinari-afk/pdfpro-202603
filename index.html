@@ -455,6 +455,11 @@
                                         <option value="mincho">明 朝</option>
                                     </select>
                                 </div>
+                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
+                                    <button id="writeRotateBtn" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors" title="PDFを90度回転">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                    </button>
+                                </div>
                                 <div class="flex items-center gap-1 px-2">
                                     <button id="zoomOutBtn" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors" title="縮小">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" /></svg>
@@ -744,6 +749,49 @@
                 updateZoomUI();
                 renderWritePage(currentWritePage);
             };
+
+            // 書き込みPDFの回転
+            document.getElementById('writeRotateBtn').addEventListener('click', async () => {
+                if (files.length === 0) return;
+                
+                const hasAnnotations = Object.keys(writeAnnotations).some(k => writeAnnotations[k].length > 0);
+                if (hasAnnotations) {
+                    showToast("PDFを回転したため、書き込み内容がリセットされました。", "info");
+                }
+                
+                showLoading(true, "PDFを回転中...");
+                try {
+                    const f = files[0];
+                    const doc = await PDFDocument.load(f.data.slice(0));
+                    const pages = doc.getPages();
+                    pages.forEach(p => {
+                        const currentRot = p.getRotation().angle || 0;
+                        p.setRotation(degrees((currentRot + 90) % 360));
+                    });
+                    
+                    const newBytes = await doc.save();
+                    // 新しいバイト配列をArrayBufferとして保持
+                    f.data = newBytes.buffer.slice(newBytes.byteOffset, newBytes.byteOffset + newBytes.byteLength); 
+                    
+                    if (f.previewUrl && f.previewUrl.startsWith('blob:')) {
+                        URL.revokeObjectURL(f.previewUrl);
+                    }
+                    f.previewUrl = await generatePdfPreview(f.data.slice(0));
+                    f.rotation = 0; // ファイル自体の回転情報はリセット
+                    
+                    writeAnnotations = {};
+                    activeAnnotationId = null;
+                    const writeLayer = document.getElementById('writeAnnotationLayer');
+                    if (writeLayer) writeLayer.innerHTML = '';
+                    
+                    await loadWritePdf(f.data);
+                    
+                } catch (e) {
+                    console.error(e);
+                    showToast("回転処理に失敗しました", "error");
+                }
+                showLoading(false);
+            });
 
             // 初期化
             setMode('write');
