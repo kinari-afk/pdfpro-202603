@@ -11,8 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
     <!-- PDFレンダリング(プレビュー用) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <!-- PDF.js テキストレイヤー用CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf_viewer.min.css">
     <!-- ZIP圧縮 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -112,21 +110,6 @@
 
         .annotation-wrapper:hover .annotation-delete,
         .annotation-wrapper:hover .annotation-drag-handle { opacity: 1; }
-
-        /* 選択モード時の挙動 */
-        #writeAnnotationLayer.select-mode {
-            pointer-events: none;
-            cursor: default;
-        }
-        #writeAnnotationLayer.select-mode .annotation-wrapper {
-            pointer-events: auto;
-        }
-        .textLayer {
-            opacity: 1.0;
-        }
-        .textLayer ::selection {
-            background: rgba(59, 130, 246, 0.3);
-        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 pb-12 relative">
@@ -457,17 +440,6 @@
                             
                             <!-- ツールバー（色・サイズ・フォント・ズーム） -->
                             <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm flex-wrap">
-                                <!-- ツール切替（書き込み / 選択） -->
-                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <button id="toolDrawBtn" class="bg-blue-100 text-blue-700 px-2 py-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1" title="書き込み">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        書込
-                                    </button>
-                                    <button id="toolSelectBtn" class="text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1" title="テキスト選択・コピー">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-                                        選択
-                                    </button>
-                                </div>
                                 <div class="flex items-center gap-1 px-2 border-r border-slate-200">
                                     <label class="text-xs font-bold text-slate-500" title="文字色">色</label>
                                     <input type="color" id="annColor" value="#1e293b" class="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent">
@@ -511,7 +483,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                         <div>
                             <p class="font-bold mb-1">クリック、またはドラッグして入力枠を作成！</p>
-                            <p class="text-indigo-700">ドラッグして背景の罫線や枠に合わせたサイズのテキストボックスを作れます。元の文章をコピーしたい場合は、上部ツールバーの<span class="font-bold">「選択」</span>に切り替えてください。</p>
+                            <p class="text-indigo-700">ドラッグして背景の罫線や枠に合わせたサイズのテキストボックスを作れます。<span class="font-bold">「≡」アイコンで移動</span>、右下をドラッグでサイズの再調整が可能です。</p>
                         </div>
                     </div>
 
@@ -519,9 +491,6 @@
                     <div id="pdfEditorContainer" class="relative overflow-auto bg-slate-200/80 rounded-2xl border border-slate-300 flex-grow min-h-[700px] h-[85vh] flex justify-center custom-scrollbar p-6 shadow-inner transition-all duration-300">
                         <div id="pdfPageWrapper" class="relative shadow-xl bg-white origin-top hidden" style="width: max-content; height: max-content;">
                             <canvas id="writePdfCanvas" class="block"></canvas>
-                            <!-- テキストレイヤー（コピー用） -->
-                            <div id="textLayer" class="textLayer" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; opacity: 1.0;"></div>
-                            <!-- 書き込みレイヤー -->
                             <div id="writeAnnotationLayer" class="absolute inset-0 cursor-crosshair"></div>
                         </div>
                         <div id="writeEmptyState" class="flex flex-col items-center justify-center text-slate-400 w-full h-full">
@@ -662,7 +631,6 @@
         
         let writeCurrentScale = 1.0;
         let activeAnnotationId = null;
-        let currentWriteTool = 'draw'; // 'draw' or 'select'
 
         const modeDescriptions = {
             'merge': '複数のPDFファイルを選択し、順番を並び替えて1つのファイルに結合します。',
@@ -690,28 +658,14 @@
                 document.getElementById('processBtn').click();
             });
 
-            // 書き込みモードのツール切替
-            const layer = document.getElementById('writeAnnotationLayer');
-            document.getElementById('toolDrawBtn').addEventListener('click', () => {
-                currentWriteTool = 'draw';
-                document.getElementById('toolDrawBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1";
-                document.getElementById('toolSelectBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1";
-                layer.classList.remove('select-mode');
-            });
-            document.getElementById('toolSelectBtn').addEventListener('click', () => {
-                currentWriteTool = 'select';
-                document.getElementById('toolSelectBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1";
-                document.getElementById('toolDrawBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded transition-colors text-xs font-bold flex items-center gap-1";
-                layer.classList.add('select-mode');
-            });
-
             // 書き込みレイヤーのクリックイベント設定
+            const layer = document.getElementById('writeAnnotationLayer');
+            
             let isDrawingRect = false;
             let startX = 0, startY = 0;
             let drawRect = null;
 
             layer.addEventListener('mousedown', (e) => {
-                if (currentWriteTool !== 'draw') return;
                 if (e.target !== layer) return; // テキストエリア等のクリックは無視
                 isDrawingRect = true;
                 startX = e.offsetX;
@@ -1189,7 +1143,6 @@
             const canvas = document.getElementById('writePdfCanvas');
             const ctx = canvas.getContext('2d');
             const layer = document.getElementById('writeAnnotationLayer');
-            const textLayerDiv = document.getElementById('textLayer');
 
             // アンスケール(scale:1)のビューポートを保存しておく（プロセス用）
             const unscaledViewport = page.getViewport({ scale: 1.0 });
@@ -1206,27 +1159,6 @@
             wrapper.style.height = `${viewport.height}px`;
 
             await page.render({ canvasContext: ctx, viewport }).promise;
-            
-            // テキストレイヤーのレンダリング（コピー用）
-            textLayerDiv.innerHTML = '';
-            textLayerDiv.style.width = `${viewport.width}px`;
-            textLayerDiv.style.height = `${viewport.height}px`;
-            textLayerDiv.style.setProperty('--scale-factor', viewport.scale);
-
-            try {
-                const textContent = await page.getTextContent();
-                const renderTask = pdfjsLib.renderTextLayer({
-                    textContentSource: textContent,
-                    container: textLayerDiv,
-                    viewport: viewport,
-                    textDivs: []
-                });
-                if (renderTask && renderTask.promise) {
-                    await renderTask.promise;
-                }
-            } catch (e) {
-                console.warn("Text layer rendering failed", e);
-            }
 
             // アノテーションを再構築
             layer.innerHTML = '';
