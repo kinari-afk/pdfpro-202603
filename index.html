@@ -830,23 +830,28 @@
             const mainActionCard = document.getElementById('mainActionCard');
             const dropZone = document.getElementById('dropZone');
             const actionButtons = document.getElementById('actionButtons');
+            const actionCardHeader = document.getElementById('actionCardHeader');
 
             if (mode === 'write') {
                 fileListPanel.classList.add('hidden'); fileListPanel.classList.remove('flex');
                 writeWorkspace.classList.remove('hidden'); writeWorkspace.classList.add('flex');
                 leftCol.classList.remove('lg:col-span-4'); leftCol.classList.add('lg:col-span-12');
                 rightCol.classList.remove('lg:col-span-8'); rightCol.classList.add('lg:col-span-12');
-                mainActionCard.classList.add('lg:flex', 'lg:items-center', 'lg:justify-between');
-                dropZone.classList.add('lg:flex-1'); dropZone.classList.replace('p-8', 'p-4'); 
-                actionButtons.classList.add('lg:w-64'); actionButtons.classList.remove('mt-8', 'pt-6');
+                
+                mainActionCard.classList.add('lg:flex', 'lg:items-center', 'lg:justify-between', 'lg:gap-8');
+                actionCardHeader.classList.add('lg:w-1/4', 'lg:mb-0');
+                dropZone.classList.add('lg:flex-1', 'lg:mb-0'); dropZone.classList.replace('p-8', 'p-4'); 
+                actionButtons.classList.add('lg:w-64', 'lg:mt-0', 'lg:pt-0', 'lg:border-t-0'); actionButtons.classList.remove('mt-8', 'pt-6');
             } else {
                 fileListPanel.classList.remove('hidden'); fileListPanel.classList.add('flex');
                 writeWorkspace.classList.add('hidden'); writeWorkspace.classList.remove('flex');
                 leftCol.classList.add('lg:col-span-4'); leftCol.classList.remove('lg:col-span-12');
                 rightCol.classList.add('lg:col-span-8'); rightCol.classList.remove('lg:col-span-12');
-                mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between');
-                dropZone.classList.remove('lg:flex-1'); dropZone.classList.replace('p-4', 'p-8');
-                actionButtons.classList.remove('lg:w-64'); actionButtons.classList.add('mt-8', 'pt-6');
+                
+                mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between', 'lg:gap-8');
+                actionCardHeader.classList.remove('lg:w-1/4', 'lg:mb-0');
+                dropZone.classList.remove('lg:flex-1', 'lg:mb-0'); dropZone.classList.replace('p-4', 'p-8');
+                actionButtons.classList.remove('lg:w-64', 'lg:mt-0', 'lg:pt-0', 'lg:border-t-0'); actionButtons.classList.add('mt-8', 'pt-6');
             }
 
             document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
