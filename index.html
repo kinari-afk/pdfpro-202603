@@ -399,8 +399,14 @@
                             <!-- Toolbar -->
                             <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm flex-wrap">
                                 <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <button id="toolDrawBtn" class="bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors">書込</button>
-                                    <button id="toolSelectBtn" class="text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors">選択</button>
+                                    <button id="toolDrawBtn" class="bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1" title="書き込み">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                        書込
+                                    </button>
+                                    <button id="toolSelectBtn" class="text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1" title="テキスト選択・コピー">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
+                                        選択
+                                    </button>
                                 </div>
                                 <div class="flex items-center gap-1 px-2 border-r border-slate-200">
                                     <input type="color" id="annColor" value="#1e293b" class="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent" title="文字色">
@@ -659,14 +665,14 @@
             const layer = document.getElementById('writeAnnotationLayer');
             document.getElementById('toolDrawBtn').addEventListener('click', () => {
                 currentWriteTool = 'draw';
-                document.getElementById('toolDrawBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors";
-                document.getElementById('toolSelectBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors";
+                document.getElementById('toolDrawBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
+                document.getElementById('toolSelectBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
                 layer.classList.remove('select-mode');
             });
             document.getElementById('toolSelectBtn').addEventListener('click', () => {
                 currentWriteTool = 'select';
-                document.getElementById('toolSelectBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors";
-                document.getElementById('toolDrawBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors";
+                document.getElementById('toolSelectBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
+                document.getElementById('toolDrawBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
                 layer.classList.add('select-mode');
             });
 
@@ -1145,8 +1151,9 @@
             }).observe(textarea);
 
             const delBtn = document.createElement('div');
-            delBtn.className = 'annotation-delete';
-            delBtn.innerHTML = '×';
+            delBtn.className = 'annotation-delete flex items-center justify-center';
+            delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>';
+            delBtn.title = "削除";
             delBtn.onclick = (e) => {
                 e.stopPropagation();
                 writeAnnotations[currentWritePage] = writeAnnotations[currentWritePage].filter(a => a.id !== ann.id);
@@ -1154,8 +1161,9 @@
             };
 
             const dragHandle = document.createElement('div');
-            dragHandle.className = 'annotation-drag-handle';
-            dragHandle.innerHTML = '≡';
+            dragHandle.className = 'annotation-drag-handle flex items-center justify-center';
+            dragHandle.title = "ドラッグして移動";
+            dragHandle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>';
             let isDragging = false, startX, startY, initL, initT;
             dragHandle.onmousedown = (e) => {
                 e.preventDefault(); isDragging = true; startX = e.clientX; startY = e.clientY;
