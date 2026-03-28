@@ -1248,6 +1248,25 @@
             };
         }
 
+        // 共通フォント取得関数
+        async function fetchValidFont(urls) {
+            for (const url of urls) {
+                try {
+                    const fontRes = await fetch(url);
+                    if (fontRes.ok) {
+                        const buffer = await fontRes.arrayBuffer();
+                        const headerStr = String.fromCharCode(...new Uint8Array(buffer.slice(0, 10)));
+                        if (!headerStr.includes('<html') && !headerStr.includes('<!DOCTYPE')) {
+                            return buffer;
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`Font fetch failed: ${url}`, e);
+                }
+            }
+            return null;
+        }
+
         // --- Execute Process ---
         document.getElementById('processBtn').onclick = async () => {
             showLoading(true);
@@ -1255,30 +1274,70 @@
                 if (mode === 'write') await processWrite();
                 else if (mode === 'merge') await processMerge();
                 else showToast("このモードの処理は準備中です");
-            } catch (e) { showToast("エラーが発生しました"); }
+            } catch (e) { 
+                console.error(e);
+                showToast("エラーが発生しました: " + (e.message || "")); 
+            }
             showLoading(false);
         };
 
         async function processWrite() {
             const f = files[0];
+            
+            showLoading(true, "日本語フォントを準備中...");
+            
             const pdfDoc = await PDFDocument.load(f.data.slice(0));
             pdfDoc.registerFontkit(window.fontkit);
             
-            const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/kosugimaru/KosugiMaru-Regular.ttf';
-            const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
-            const customFont = await pdfDoc.embedFont(fontBytes);
+            // 使われているフォントの種類を特定
+            const usedFonts = new Set();
+            for (let pNum in writeAnnotations) {
+                writeAnnotations[pNum].forEach(ann => usedFonts.add(ann.fontFamily || 'gothic'));
+            }
+
+            const customFonts = {};
+
+            // ゴシック体の読み込み
+            if (usedFonts.has('gothic') || usedFonts.size === 0) {
+                const fontUrlsGothic = [
+                    'https://raw.githubusercontent.com/google/fonts/main/ofl/kosugimaru/KosugiMaru-Regular.ttf',
+                    'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kosugimaru/KosugiMaru-Regular.ttf',
+                    'https://raw.githubusercontent.com/google/fonts/main/ofl/sawarabigothic/SawarabiGothic-Regular.ttf'
+                ];
+                let fontBytesGothic = await fetchValidFont(fontUrlsGothic);
+                if (!fontBytesGothic) throw new Error('ゴシックフォントの取得に失敗しました。');
+                customFonts['gothic'] = await pdfDoc.embedFont(fontBytesGothic);
+            }
+
+            // 明朝体の読み込み
+            if (usedFonts.has('mincho')) {
+                const fontUrlsMincho = [
+                    'https://raw.githubusercontent.com/google/fonts/main/ofl/sawarabimincho/SawarabiMincho-Regular.ttf',
+                    'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sawarabimincho/SawarabiMincho-Regular.ttf'
+                ];
+                let fontBytesMincho = await fetchValidFont(fontUrlsMincho);
+                if (!fontBytesMincho) throw new Error('明朝フォントの取得に失敗しました。');
+                customFonts['mincho'] = await pdfDoc.embedFont(fontBytesMincho);
+            }
+
+            showLoading(true, "テキストを書き込み中...");
 
             const pages = pdfDoc.getPages();
             for (let pNum in writeAnnotations) {
-                const page = pages[parseInt(pNum) - 1];
+                const pageIndex = parseInt(pNum) - 1;
+                if (pageIndex < 0 || pageIndex >= pages.length) continue;
+                
+                const page = pages[pageIndex];
                 const { width: pdfW, height: pdfH } = page.getSize();
                 const unscaledViewport = pdfViewports[pNum];
                 if (!unscaledViewport) continue;
+                
                 const scaleX = pdfW / unscaledViewport.width;
                 const scaleY = pdfH / unscaledViewport.height;
 
                 writeAnnotations[pNum].forEach(ann => {
                     if (!ann.text.trim()) return;
+                    
                     const ptSize = ann.fontSize * scaleY;
                     const pdfY = pdfH - ((ann.y + 4) * scaleY) - (ptSize * 0.8);
                     
@@ -1286,9 +1345,11 @@
                     const g = parseInt(ann.color.slice(3, 5), 16) / 255;
                     const b = parseInt(ann.color.slice(5, 7), 16) / 255;
 
+                    const selectedFont = customFonts[ann.fontFamily || 'gothic'];
+
                     page.drawText(ann.text, {
                         x: (ann.x + 4) * scaleX,
-                        y: pdfY, size: ptSize, font: customFont,
+                        y: pdfY, size: ptSize, font: selectedFont,
                         maxWidth: (ann.width - 8) * scaleX,
                         lineHeight: ptSize * 1.5,
                         color: rgb(r, g, b)
