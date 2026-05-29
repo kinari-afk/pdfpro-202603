@@ -562,7 +562,7 @@
             const origText = btn.innerHTML;
             
             // フォントデータは容量が大きいため、ユーザーを不安にさせないようメッセージを変更
-            btn.innerHTML = '<span class="animate-spin mr-2">⏳</span> フォントを取得中... (初回のみ数秒かかります)';
+            btn.innerHTML = '<span class="animate-spin mr-2">⏳</span> フォントを取得中... (データが大きいため10〜20秒ほどかかります)';
             btn.disabled = true;
 
             try {
@@ -576,9 +576,9 @@
                     throw new Error("フォントレンダリングエンジン(fontkit)の読み込みに失敗しています。");
                 }
                 
-                // 日本語フォント(フルセット)の読み込み
-                // サブセットフォントでの文字化けを防ぐため、フルセットのフォントを使用します
-                const fontUrl = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-cjk@main/Sans/OTF/Japanese/NotoSansCJKjp-Regular.otf';
+                // 日本語フォント(フルセットTTF)の読み込み
+                // OTF形式だと文字が横倒しになるバグを防ぐため、TTF形式のフォント（原ノ味ゴシック）を使用します
+                const fontUrl = 'https://cdn.jsdelivr.net/gh/trueroad/HaranoAjiFonts@master/HaranoAjiGothic-Regular.ttf';
                 const fontRes = await fetch(fontUrl);
                 if (!fontRes.ok) throw new Error("フォントファイルの取得に失敗しました");
                 const fontBuffer = await fontRes.arrayBuffer();
