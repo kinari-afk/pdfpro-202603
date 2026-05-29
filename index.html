@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf_viewer.min.css">
     <!-- ZIP圧縮 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
         
@@ -56,6 +57,8 @@
             border-radius: 4px;
             min-width: 40px;
             min-height: 24px;
+            white-space: pre-wrap; /* 画面上の折り返しを許可（修正ポイント） */
+            word-wrap: break-word;
             transition: background 0.2s, border-color 0.2s;
         }
         /* 入力前（空）の時は薄く表示して見失わないようにする */
@@ -132,10 +135,14 @@
         .textLayer ::selection {
             background: rgba(59, 130, 246, 0.3);
         }
+        .annotation-wrapper {
+            position: absolute;
+            user-select: none;
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 pb-12 relative">
-    <!-- Header -->
+    
     <header class="bg-white border-b border-slate-200 sticky top-0 z-40 glass-effect">
         <div class="max-w-6xl mx-auto px-4 py-4 flex flex-col xl:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
@@ -207,7 +214,7 @@
 
                     <div id="dropZone" class="drop-zone rounded-2xl p-4 text-center cursor-pointer mb-2 bg-slate-50/50 relative overflow-hidden group transition-all duration-300 lg:flex-1 lg:mb-0">
                         <div class="absolute inset-0 bg-blue-500/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                        <input type="file" id="fileInput" class="hidden" multiple>
+                        <input type="file" id="fileInput" class="hidden" multiple accept="application/pdf">
                         <div class="relative z-10 flex flex-col items-center justify-center">
                             <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -220,7 +227,7 @@
                     </div>
 
                     <!-- Compress Settings -->
-                    <div id="compress-options" class="hidden pt-6 mt-4 animate-fadeIn">
+                    <div id="compress-options" class="hidden pt-6 mt-4 animate-fadeIn lg:w-1/3">
                         <div class="bg-amber-50 text-amber-800 p-4 rounded-xl border border-amber-200 text-sm mb-4 shadow-sm">
                             <span class="font-bold flex items-center gap-1 mb-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
@@ -261,7 +268,7 @@
                     </div>
 
                     <!-- N-up Settings -->
-                    <div id="nup-options" class="hidden pt-6 mt-4 animate-fadeIn">
+                    <div id="nup-options" class="hidden pt-6 mt-4 animate-fadeIn lg:w-1/3">
                         <h3 class="text-sm font-bold text-slate-800 mb-3 ml-1">配置設定</h3>
                         <div class="mb-4">
                             <label class="block text-xs font-bold text-slate-500 mb-2">1枚に配置するページ数</label>
@@ -270,1524 +277,398 @@
                                 <label class="flex items-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200"><input type="radio" name="nupCount" value="4" checked class="w-4 h-4 text-blue-600 mr-2"> 4枚</label>
                                 <label class="flex items-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200"><input type="radio" name="nupCount" value="6" class="w-4 h-4 text-blue-600 mr-2"> 6枚</label>
                                 <label class="flex items-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200"><input type="radio" name="nupCount" value="8" class="w-4 h-4 text-blue-600 mr-2"> 8枚</label>
-                                <label class="flex items-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200 col-span-2"><input type="radio" name="nupCount" value="9" class="w-4 h-4 text-blue-600 mr-2"> 9枚</label>
                             </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="block text-xs font-bold text-slate-500 mb-2">用紙の向き (A4)</label>
-                            <div class="flex gap-2">
-                                <label class="flex-1 flex items-center justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                    <input type="radio" name="nupOrientation" value="portrait" checked class="hidden peer"> 
-                                    <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">縦向き</div>
-                                </label>
-                                <label class="flex-1 flex items-center justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                    <input type="radio" name="nupOrientation" value="landscape" class="hidden peer"> 
-                                    <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">横向き</div>
-                                </label>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-2">配置順</label>
-                            <div class="flex gap-2">
-                                <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                    <input type="radio" name="nupOrder" value="ltr" checked class="hidden peer"> 
-                                    <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">左から右</div>
-                                </label>
-                                <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                    <input type="radio" name="nupOrder" value="rtl" class="hidden peer"> 
-                                    <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">右から左</div>
-                                </label>
-                                <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                    <input type="radio" name="nupOrder" value="ttb" class="hidden peer"> 
-                                    <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">上から下</div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Split Settings -->
-                    <div id="split-options" class="hidden pt-6 mt-4 animate-fadeIn">
-                        <h3 class="text-sm font-bold text-slate-800 mb-3 ml-1">分割方法</h3>
-                        <div class="space-y-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100">
-                            <label class="flex items-center text-sm cursor-pointer p-3 bg-white rounded-lg border border-slate-200">
-                                <input type="radio" name="splitType" value="all" checked class="w-4 h-4 text-blue-600 mr-3"> 1ページずつ全て分割
-                            </label>
-                            <label class="flex items-center text-sm cursor-pointer p-3 bg-white rounded-lg border border-slate-200">
-                                <input type="radio" name="splitType" value="visual" class="w-4 h-4 text-blue-600 mr-3"> 視覚的に分割位置を指定
-                            </label>
-                            <label class="flex items-center text-sm cursor-pointer p-3 bg-white rounded-lg border border-slate-200">
-                                <input type="radio" name="splitType" value="range" class="w-4 h-4 text-blue-600 mr-3"> ページ番号で範囲指定
-                            </label>
-                        </div>
-                        <div id="splitRangeInputWrapper" class="hidden mt-3 animate-fadeIn">
-                            <input type="text" id="splitRangeInput" placeholder="例: 1-3, 5, 8-10" class="w-full p-3 text-sm border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                    </div>
-
-                    <!-- PDF to Image Settings -->
-                    <div id="pdf2img-options" class="hidden pt-6 mt-4 animate-fadeIn">
-                        <h3 class="text-sm font-bold text-slate-800 mb-3 ml-1">画像フォーマット</h3>
-                        <div class="flex gap-2 mb-4">
-                            <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                <input type="radio" name="imgFormat" value="jpeg" checked class="hidden peer"> 
-                                <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">JPEG</div>
-                            </label>
-                            <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                <input type="radio" name="imgFormat" value="png" class="hidden peer"> 
-                                <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">PNG</div>
-                            </label>
-                        </div>
-                        <h3 class="text-sm font-bold text-slate-800 mb-3 ml-1">画質 (スケール)</h3>
-                        <div class="flex gap-2">
-                            <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                <input type="radio" name="imgScale" value="1" class="hidden peer"> 
-                                <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">標準</div>
-                            </label>
-                            <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                <input type="radio" name="imgScale" value="2" checked class="hidden peer"> 
-                                <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">高画質</div>
-                            </label>
-                            <label class="flex-1 flex justify-center text-sm cursor-pointer p-2 bg-slate-50 rounded-lg border border-slate-200">
-                                <input type="radio" name="imgScale" value="3" class="hidden peer"> 
-                                <div class="peer-checked:text-blue-600 peer-checked:font-bold text-slate-500">最高画質</div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div id="actionButtons" class="pt-6 border-t border-slate-100 transition-all duration-300 lg:w-64 lg:mt-0 lg:pt-0 lg:border-t-0">
-                        <button id="processBtn" class="w-full bg-slate-900 hover:bg-blue-600 text-white font-bold py-4 rounded-xl transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
-                            処理を実行する
-                        </button>
-                        <button id="clearBtn" class="w-full text-slate-400 hover:text-red-500 text-sm font-medium mt-4 py-2 transition-colors">
-                            リストをクリア
-                        </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Right Column: File List & Work Area -->
-            <div id="rightColumn" class="lg:col-span-12 flex flex-col gap-6 transition-all duration-300">
+            
+            <!-- Right Column: Workspace / Preview (Hidden until file is selected) -->
+            <div id="previewColumn" class="hidden lg:col-span-8 flex-col space-y-4">
                 
-                <!-- Visual Split Area -->
-                <div id="visualSplitArea" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
-                    <h3 class="text-base font-bold text-slate-800 mb-2">ハサミを入れて分割</h3>
-                    <p class="text-sm text-slate-500 mb-4 bg-blue-50 text-blue-800 p-3 rounded-lg border border-blue-100">
-                        ページ間のアイコンをクリックして分割位置を指定してください。
-                    </p>
-                    <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-x-auto custom-scrollbar min-h-[260px]">
-                        <div id="visualSplitContainer" class="flex items-stretch min-w-max pb-4 pt-2 px-2 h-full"></div>
-                    </div>
-                </div>
-
-                <!-- Visual Remove Area -->
-                <div id="remove-options" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
-                    <h3 class="text-base font-bold text-slate-800 mb-2">不要なページを削除</h3>
-                    <p class="text-sm text-slate-500 mb-4 bg-red-50 text-red-800 p-3 rounded-lg border border-red-100">
-                        クリックして、削除したいページ（赤枠）を選択してください。
-                    </p>
-                    <div class="p-5 bg-slate-50/80 rounded-2xl border border-slate-200 overflow-y-auto max-h-[450px] custom-scrollbar">
-                        <div id="visualRemoveContainer" class="flex flex-wrap gap-4 pb-2 pt-1 justify-center md:justify-start"></div>
-                    </div>
-                </div>
-
-                <!-- Write Workspace -->
-                <div id="writeWorkspace" class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn flex-grow flex-col h-full flex">
-                    <div class="flex flex-col xl:flex-row xl:justify-between xl:items-center gap-4 mb-4 pb-4 border-b border-slate-100">
-                        <div class="flex flex-wrap items-center gap-4">
-                            <h3 class="text-base font-bold text-slate-800">PDFに書き込み</h3>
-                            <!-- Toolbar -->
-                            <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm flex-wrap">
-                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <button id="toolDrawBtn" class="bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1" title="書き込み">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                        書込
-                                    </button>
-                                    <button id="toolSelectBtn" class="text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1" title="テキスト選択・コピー">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-                                        選択
-                                    </button>
-                                </div>
-                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <input type="color" id="annColor" value="#1e293b" class="w-6 h-6 rounded cursor-pointer border-0 p-0 bg-transparent" title="文字色">
-                                </div>
-                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <input type="number" id="annFontSize" value="14" min="8" max="72" class="w-12 text-sm text-center border-none bg-transparent outline-none font-bold" title="サイズ">
-                                </div>
-                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <select id="annFontFamily" class="text-sm border-none bg-transparent outline-none font-bold cursor-pointer">
-                                        <option value="gothic">ゴシック</option>
-                                        <option value="mincho">明 朝</option>
-                                    </select>
-                                </div>
-                                <div class="flex items-center gap-1 px-2 border-r border-slate-200">
-                                    <button id="writeRotateBtn" class="text-slate-500 hover:text-blue-600 p-1 rounded transition-colors" title="90度回転">⟳</button>
-                                </div>
-                                <div class="flex items-center gap-1 px-2">
-                                    <button id="zoomOutBtn" class="text-slate-500 hover:text-blue-600 p-1 rounded transition-colors" title="縮小">-</button>
-                                    <span id="zoomLevel" class="text-xs font-bold w-10 text-center">100%</span>
-                                    <button id="zoomInBtn" class="text-slate-500 hover:text-blue-600 p-1 rounded transition-colors" title="拡大">+</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-3 bg-slate-100 p-1.5 rounded-xl shadow-inner">
-                            <button id="writePrevBtn" class="px-3 py-1.5 bg-white rounded-lg shadow-sm text-slate-600 hover:text-blue-600 text-sm transition-colors">&lt; 前</button>
-                            <span id="writePageIndicator" class="text-sm font-bold text-slate-700 px-2 min-w-[60px] text-center">- / -</span>
-                            <button id="writeNextBtn" class="px-3 py-1.5 bg-white rounded-lg shadow-sm text-slate-600 hover:text-blue-600 text-sm transition-colors">次 &gt;</button>
-                        </div>
+                <!-- Toolbar for Write Mode -->
+                <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/60 flex justify-between items-center">
+                    <div class="flex gap-2">
+                        <button onclick="changePage(-1)" class="px-4 py-2 bg-slate-100 rounded-lg text-sm font-bold hover:bg-slate-200 text-slate-700 transition">前ページ</button>
+                        <span id="pageIndicator" class="text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">Page 1 / 1</span>
+                        <button onclick="changePage(1)" class="px-4 py-2 bg-slate-100 rounded-lg text-sm font-bold hover:bg-slate-200 text-slate-700 transition">次ページ</button>
                     </div>
                     
-                    <div class="bg-indigo-50 text-indigo-800 p-4 rounded-xl border border-indigo-100 text-sm mb-4">
-                        <p class="font-bold">クリックして自動枠認識、またはドラッグして入力枠を作成！</p>
-                        <p>空白のセル（枠の中）をクリックすると、自動的に枠に合わせてテキストボックスが広がります。「選択」ツールに切り替えると元PDFの文字をコピーできます。</p>
-                    </div>
-
-                    <!-- PDF Viewer -->
-                    <div id="pdfEditorContainer" class="relative overflow-auto bg-slate-200/80 rounded-2xl border border-slate-300 flex-grow min-h-[700px] h-[85vh] flex justify-center custom-scrollbar p-6 shadow-inner">
-                        <div id="pdfPageWrapper" class="relative shadow-xl bg-white origin-top hidden" style="width: max-content; height: max-content;">
-                            <canvas id="writePdfCanvas" class="block"></canvas>
-                            <div id="textLayer" class="textLayer" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; opacity: 1.0; z-index: 10;"></div>
-                            <div id="writeAnnotationLayer" class="absolute inset-0 cursor-crosshair" style="z-index: 20;"></div>
-                        </div>
-                        <div id="writeEmptyState" class="flex flex-col items-center justify-center text-slate-400 w-full h-full">
-                            <p class="font-medium">PDFファイルが選択されていません</p>
-                        </div>
+                    <div id="writeToolbar" class="flex gap-2 items-center">
+                        <span class="text-sm font-bold text-slate-600 mr-2">文字サイズ:</span>
+                        <button onclick="adjustFontSize(-2)" class="px-3 py-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 font-bold text-slate-600 border border-slate-200 transition">A-</button>
+                        <button onclick="adjustFontSize(2)" class="px-3 py-1.5 bg-slate-100 rounded-lg hover:bg-slate-200 font-bold text-slate-600 border border-slate-200 transition">A+</button>
                     </div>
                 </div>
 
-                <!-- File List Panel -->
-                <div id="fileListPanel" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 flex-grow flex-col">
-                    <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
-                        <h2 class="text-lg font-bold text-slate-800">対象ファイル</h2>
-                        <span id="fileCount" class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">0 ファイル</span>
-                    </div>
-                    <div id="fileList" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 flex-grow content-start min-h-[300px]"></div>
-                    <div id="emptyState" class="flex flex-col items-center justify-center py-20 text-slate-400 border-2 border-dashed border-slate-200 rounded-2xl">
-                        <p class="font-medium">ファイルが追加されていません</p>
+                <!-- Canvas Area -->
+                <div id="previewContainer" class="relative border border-slate-300 bg-slate-200 w-full min-h-[600px] overflow-auto flex justify-center items-start p-4 rounded-2xl shadow-inner">
+                    <div class="relative shadow-xl transition-all" style="background-color: white;">
+                        <canvas id="pdfCanvas" class="block"></canvas>
+                        <!-- ここをクリックして書き込むレイヤー -->
+                        <div id="writeAnnotationLayer" class="absolute top-0 left-0 w-full h-full cursor-text"></div>
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Result Area -->
-        <div id="resultArea" class="hidden mt-8 animate-fadeIn max-w-3xl mx-auto">
-            <div class="bg-white border-2 border-green-500 rounded-3xl p-10 text-center shadow-xl">
-                <h3 class="text-3xl font-extrabold text-slate-800 mb-3">完了しました！</h3>
-                <p id="resultInfo" class="text-slate-600 mb-8 font-medium bg-slate-50 inline-block px-4 py-2 rounded-lg"></p>
-                <div>
-                    <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-12 rounded-xl shadow-lg">
-                        ファイルをダウンロード
+                
+                <!-- Action Button -->
+                <div class="w-full">
+                    <button onclick="exportPdf()" id="exportBtn" class="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition shadow-md hover:shadow-lg flex justify-center items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        <span>PDFを出力する</span>
                     </button>
                 </div>
             </div>
+
         </div>
     </main>
-
-    <!-- Modals and Overlays -->
-    <div id="previewModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden flex-col items-center justify-center z-50 p-4" onclick="closePreviewModal()">
-        <div class="bg-white rounded-2xl flex flex-col max-h-[90vh] max-w-4xl w-full overflow-hidden" onclick="event.stopPropagation()">
-            <div class="flex justify-between p-4 border-b">
-                <h3 id="previewModalTitle" class="text-lg font-bold">プレビュー</h3>
-                <button onclick="closePreviewModal()" class="text-slate-400">×</button>
-            </div>
-            <div class="p-6 flex-1 overflow-auto flex items-center justify-center bg-slate-100 min-h-[50vh]">
-                <div id="previewModalContent"></div>
-            </div>
-        </div>
-    </div>
-
-    <div id="loadingOverlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md hidden flex-col items-center justify-center z-50 text-white">
-        <div class="bg-slate-800 p-8 rounded-3xl shadow-2xl text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
-            <p id="loadingText" class="font-bold">処理中...</p>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-4 rounded-2xl shadow-2xl opacity-0 transition-opacity pointer-events-none z-50 flex items-center">
-        <span id="toastMsg" class="font-medium text-sm"></span>
-    </div>
-
-    <button id="floatingProcessBtn" class="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-full shadow-lg z-40 hidden">
-        書き込みを完了して保存
-    </button>
 
     <script>
         // PDF.js worker setup
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-        const { PDFDocument, rgb, degrees } = PDFLib;
 
-        let mode = 'write'; 
-        let files = []; 
-        let resultBlob = null;
-        let visualSplitPoints = new Set();
-        let visualRemovePoints = new Set();
-
-        let currentWritePage = 1;
-        let totalWritePages = 0;
-        let writeAnnotations = {}; 
-        let pdfDocProxy = null;
-        let pdfViewports = {}; 
+        let currentMode = 'write';
+        let pdfBytes = null;
+        let pdfjsDoc = null;
+        let currentPageNum = 1;
         
-        let writeCurrentScale = 1.0;
-        let activeAnnotationId = null;
-        let currentWriteTool = 'draw'; 
+        // ページごとのアノテーション状態(HTML)と描画時の寸法を保存
+        const pageAnnotations = {}; 
+        const pageViewData = {}; 
 
-        const modeDescriptions = {
-            'merge': '複数のPDFを選択し、順番を並び替えて1つのファイルに結合します。',
-            'nup': '複数のページを1枚の用紙に縮小して配置します。',
-            'split': '1つのPDFファイルを指定条件で複数に分割します。',
-            'remove': '不要なページを選択して削除します。',
-            'write': 'PDF上に直接テキストを書き込みます。',
-            'pdf2img': 'PDFの各ページを画像に変換してZIPでダウンロードします。',
-            'img2pdf': '画像ファイルをPDFに変換します。',
-            'compress': 'PDFのファイルサイズを縮小します。'
-        };
-
-        // --- セル枠の自動認識処理 ---
-        function autoDetectCellBounds(canvas, startX, startY) {
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            const width = canvas.width;
-            const height = canvas.height;
+        function setMode(mode) {
+            currentMode = mode;
             
-            let cx = Math.round(startX);
-            let cy = Math.round(startY);
-            
-            if (cx < 0 || cx >= width || cy < 0 || cy >= height) return null;
-            
-            const imgData = ctx.getImageData(0, 0, width, height);
-            const data = imgData.data;
-            
-            const getIdx = (x, y) => (y * width + x) * 4;
-            let baseIdx = getIdx(cx, cy);
-            const br = data[baseIdx], bg = data[baseIdx+1], bb = data[baseIdx+2];
-
-            // 暗い場所（黒い線や文字の上）をクリックした場合はスキップ
-            if ((br + bg + bb) < 400) return null;
-
-            const threshold = 60; // 枠線の判定閾値
-            const isBoundary = (x, y) => {
-                let i = getIdx(x, y);
-                let diff = Math.abs(data[i] - br) + Math.abs(data[i+1] - bg) + Math.abs(data[i+2] - bb);
-                return diff > threshold;
-            };
-
-            let left = cx, right = cx, top = cy, bottom = cy;
-            const maxSearch = 800; // 探索最大ピクセル数
-
-            // 線の途切れやノイズを考慮して少し太めのラインで探索（3px幅）
-            const checkVerticalLine = (x) => isBoundary(x, cy) || isBoundary(x, Math.max(0, cy-2)) || isBoundary(x, Math.min(height-1, cy+2));
-            const checkHorizontalLine = (y) => isBoundary(cx, y) || isBoundary(Math.max(0, cx-2), y) || isBoundary(Math.min(width-1, cx+2), y);
-
-            while(left > 0 && cx - left < maxSearch && !checkVerticalLine(left)) left--;
-            while(right < width - 1 && right - cx < maxSearch && !checkVerticalLine(right)) right++;
-            while(top > 0 && cy - top < maxSearch && !checkHorizontalLine(top)) top--;
-            while(bottom < height - 1 && bottom - cy < maxSearch && !checkHorizontalLine(bottom)) bottom++;
-
-            const w = right - left;
-            const h = bottom - top;
-
-            // 枠が画面端まで行ってしまった場合、または極端に小さい場合（文字に引っかかった）は無効
-            if (left <= 2 || right >= width - 2 || top <= 2 || bottom >= height - 2) return null;
-            if (w > maxSearch || h > maxSearch || w < 20 || h < 10) return null;
-            
-            return {
-                x: left + 2,
-                y: top + 2,
-                width: w - 4,
-                height: h - 4
-            };
-        }
-
-        // --- 背景からフォントサイズを取得する処理 ---
-        function getBackgroundFontSize(offsetX, offsetY) {
-            const textLayer = document.getElementById('textLayer');
-            if (!textLayer) return null;
-            
-            const spans = textLayer.getElementsByTagName('span');
-            if (spans.length === 0) return null;
-
-            let closestSpan = null;
-            let minDistance = Infinity;
-
-            for (let span of spans) {
-                const left = span.offsetLeft;
-                const top = span.offsetTop;
-                const width = span.offsetWidth;
-                const height = span.offsetHeight;
-                
-                const centerX = left + width / 2;
-                const centerY = top + height / 2;
-                
-                const dx = offsetX - centerX;
-                const dy = offsetY - centerY;
-                
-                const distanceY = Math.abs(offsetY - centerY);
-
-                // クリックした場所周辺のテキストを探す (縦方向をより重視)
-                if (Math.abs(dx) < 300 && distanceY < 50) {
-                    const weightedDistance = distanceY * 3 + Math.abs(dx); 
-                    if (weightedDistance < minDistance) {
-                        minDistance = weightedDistance;
-                        closestSpan = span;
-                    }
-                }
+            // タブのスタイル更新
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                btn.classList.add('text-slate-500');
+            });
+            const activeTab = document.getElementById(`tab-${mode}`);
+            if (activeTab) {
+                activeTab.classList.add('active');
+                activeTab.classList.remove('text-slate-500');
             }
+
+            // オプション領域の表示制御
+            document.getElementById('compress-options').classList.add('hidden');
+            document.getElementById('nup-options').classList.add('hidden');
             
-            if (closestSpan) {
-                const style = window.getComputedStyle(closestSpan);
-                let fontSizePx = parseFloat(style.fontSize);
-                
-                if (!isNaN(fontSizePx) && fontSizePx > 0) {
-                    let ptSize = fontSizePx / writeCurrentScale;
-                    return Math.max(8, Math.min(72, Math.round(ptSize)));
-                }
-            }
-            return null;
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Split Type Toggle
-            document.querySelectorAll('input[name="splitType"]').forEach(radio => {
-                radio.addEventListener('change', (e) => {
-                    const val = e.target.value;
-                    document.getElementById('splitRangeInputWrapper').classList.toggle('hidden', val !== 'range');
-                    document.getElementById('visualSplitArea').classList.toggle('hidden', val !== 'visual');
-                });
-            });
-
-            // Floating btn
-            document.getElementById('floatingProcessBtn').addEventListener('click', () => {
-                document.getElementById('processBtn').click();
-            });
-
-            // Tool toggle
-            const layer = document.getElementById('writeAnnotationLayer');
-            document.getElementById('toolDrawBtn').addEventListener('click', () => {
-                currentWriteTool = 'draw';
-                document.getElementById('toolDrawBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
-                document.getElementById('toolSelectBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
-                layer.classList.remove('select-mode');
-            });
-            document.getElementById('toolSelectBtn').addEventListener('click', () => {
-                currentWriteTool = 'select';
-                document.getElementById('toolSelectBtn').className = "bg-blue-100 text-blue-700 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
-                document.getElementById('toolDrawBtn').className = "text-slate-500 hover:bg-slate-100 px-2 py-1.5 rounded text-xs font-bold transition-colors flex items-center gap-1";
-                layer.classList.add('select-mode');
-            });
-
-            // Draw rect
-            let isDrawingRect = false;
-            let startX = 0, startY = 0;
-            let drawRect = null;
-
-            layer.addEventListener('mousedown', (e) => {
-                if (currentWriteTool !== 'draw') return;
-                // 既存の入力枠（annotation-wrapper）をクリックした場合は新規作成をスキップ
-                if (e.target.closest('.annotation-wrapper')) return; 
-                
-                const rect = layer.getBoundingClientRect();
-                startX = e.clientX - rect.left;
-                startY = e.clientY - rect.top;
-                
-                isDrawingRect = true;
-                drawRect = document.createElement('div');
-                drawRect.className = 'absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none rounded';
-                drawRect.style.left = `${startX}px`;
-                drawRect.style.top = `${startY}px`;
-                drawRect.style.width = '0px';
-                drawRect.style.height = '0px';
-                layer.appendChild(drawRect);
-            });
-
-            layer.addEventListener('mousemove', (e) => {
-                if (!isDrawingRect) return;
-                
-                const rect = layer.getBoundingClientRect();
-                const currentX = e.clientX - rect.left;
-                const currentY = e.clientY - rect.top;
-                
-                const width = Math.abs(currentX - startX);
-                const height = Math.abs(currentY - startY);
-                drawRect.style.left = `${Math.min(startX, currentX)}px`;
-                drawRect.style.top = `${Math.min(startY, currentY)}px`;
-                drawRect.style.width = `${width}px`;
-                drawRect.style.height = `${height}px`;
-            });
-
-            layer.addEventListener('mouseup', (e) => {
-                if (!isDrawingRect) return;
-                isDrawingRect = false;
-                if (drawRect && drawRect.parentNode) drawRect.parentNode.removeChild(drawRect);
-                
-                const rect = layer.getBoundingClientRect();
-                const endX = e.clientX - rect.left;
-                const endY = e.clientY - rect.top;
-                
-                const width = Math.abs(endX - startX);
-                const height = Math.abs(endY - startY);
-                const left = Math.min(startX, endX);
-                const top = Math.min(startY, endY);
-
-                if (width < 10 || height < 10) {
-                    const canvas = document.getElementById('writePdfCanvas');
-                    const bounds = autoDetectCellBounds(canvas, startX, startY);
-                    
-                    if (bounds) {
-                        addWriteAnnotation(currentWritePage, bounds.x, bounds.y, bounds.width, bounds.height);
-                    } else {
-                        addWriteAnnotation(currentWritePage, startX, startY);
-                    }
-                } else {
-                    addWriteAnnotation(currentWritePage, left, top, width, height);
-                }
-            });
-
-            layer.addEventListener('mouseleave', () => {
-                if(isDrawingRect) {
-                    isDrawingRect = false;
-                    if (drawRect && drawRect.parentNode) drawRect.parentNode.removeChild(drawRect);
-                }
-            });
-
-            // Toolbar changes
-            document.getElementById('annColor').addEventListener('input', (e) => {
-                if (activeAnnotationId) updateActiveAnnotation('color', e.target.value);
-            });
-            document.getElementById('annFontSize').addEventListener('input', (e) => {
-                if (activeAnnotationId) updateActiveAnnotation('fontSize', parseInt(e.target.value) || 14);
-            });
-            document.getElementById('annFontFamily').addEventListener('change', (e) => {
-                if (activeAnnotationId) updateActiveAnnotation('fontFamily', e.target.value);
-            });
-
-            // Zoom
-            document.getElementById('zoomInBtn').onclick = () => {
-                writeCurrentScale = Math.min(4.0, writeCurrentScale + 0.25);
-                updateZoomUI();
-                renderWritePage(currentWritePage);
-            };
-            document.getElementById('zoomOutBtn').onclick = () => {
-                writeCurrentScale = Math.max(0.5, writeCurrentScale - 0.25);
-                updateZoomUI();
-                renderWritePage(currentWritePage);
-            };
-
-            // Rotate
-            document.getElementById('writeRotateBtn').addEventListener('click', async () => {
-                if (files.length === 0) return;
-                if (Object.keys(writeAnnotations).some(k => writeAnnotations[k].length > 0)) {
-                    showToast("PDFを回転したため、書き込み内容がリセットされました。");
-                }
-                
-                showLoading(true, "回転中...");
-                try {
-                    const f = files[0];
-                    const doc = await PDFDocument.load(f.data.slice(0));
-                    doc.getPages().forEach(p => {
-                        const currentRot = p.getRotation().angle || 0;
-                        p.setRotation(degrees((currentRot + 90) % 360));
-                    });
-                    const newBytes = await doc.save();
-                    f.data = newBytes.buffer.slice(newBytes.byteOffset, newBytes.byteOffset + newBytes.byteLength); 
-                    if (f.previewUrl && f.previewUrl.startsWith('blob:')) URL.revokeObjectURL(f.previewUrl);
-                    f.previewUrl = await generatePdfPreview(f.data.slice(0));
-                    f.rotation = 0; 
-                    
-                    writeAnnotations = {};
-                    activeAnnotationId = null;
-                    if (layer) layer.innerHTML = '';
-                    await loadWritePdf(f.data);
-                } catch (e) {
-                    showToast("エラーが発生しました");
-                }
-                showLoading(false);
-            });
-
-            setMode('write');
-            updateStats();
-        });
-
-        window.setMode = function(newMode) {
-            if (document.getElementById('loadingOverlay').style.display === 'flex') return;
+            const desc = document.getElementById('mode-description');
             
-            const oldMode = mode;
-            mode = newMode;
-            
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`tab-${newMode}`).classList.add('active');
-            
-            document.getElementById('split-options').style.display = mode === 'split' ? 'block' : 'none';
-            document.getElementById('remove-options').style.display = mode === 'remove' ? 'block' : 'none';
-            document.getElementById('nup-options').style.display = mode === 'nup' ? 'block' : 'none';
-            document.getElementById('pdf2img-options').style.display = mode === 'pdf2img' ? 'block' : 'none';
-            document.getElementById('compress-options').style.display = mode === 'compress' ? 'block' : 'none';
-            
-            const fileListPanel = document.getElementById('fileListPanel');
-            const writeWorkspace = document.getElementById('writeWorkspace');
-            const leftCol = document.getElementById('leftColumn');
-            const rightCol = document.getElementById('rightColumn');
-            const mainActionCard = document.getElementById('mainActionCard');
-            const dropZone = document.getElementById('dropZone');
-            const actionButtons = document.getElementById('actionButtons');
-
             if (mode === 'write') {
-                fileListPanel.classList.add('hidden'); fileListPanel.classList.remove('flex');
-                writeWorkspace.classList.remove('hidden'); writeWorkspace.classList.add('flex');
-                leftCol.classList.remove('lg:col-span-4'); leftCol.classList.add('lg:col-span-12');
-                rightCol.classList.remove('lg:col-span-8'); rightCol.classList.add('lg:col-span-12');
-                mainActionCard.classList.add('lg:flex', 'lg:items-center', 'lg:justify-between');
-                dropZone.classList.add('lg:flex-1'); dropZone.classList.replace('p-8', 'p-4'); 
-                actionButtons.classList.add('lg:w-64'); actionButtons.classList.remove('mt-8', 'pt-6');
+                desc.innerText = 'PDF上に直接テキストを書き込みます。書き込みたい場所をクリックしてください。';
+            } else if (mode === 'compress') {
+                desc.innerText = 'PDFファイルの容量を圧縮します。（現在はUIのみのデモです）';
+                document.getElementById('compress-options').classList.remove('hidden');
+            } else if (mode === 'nup') {
+                desc.innerText = '複数のページを1枚の用紙に配置します。（現在はUIのみのデモです）';
+                document.getElementById('nup-options').classList.remove('hidden');
             } else {
-                fileListPanel.classList.remove('hidden'); fileListPanel.classList.add('flex');
-                writeWorkspace.classList.add('hidden'); writeWorkspace.classList.remove('flex');
-                leftCol.classList.add('lg:col-span-4'); leftCol.classList.remove('lg:col-span-12');
-                rightCol.classList.add('lg:col-span-8'); rightCol.classList.remove('lg:col-span-12');
-                mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between');
-                dropZone.classList.remove('lg:flex-1'); dropZone.classList.replace('p-4', 'p-8');
-                actionButtons.classList.remove('lg:w-64'); actionButtons.classList.add('mt-8', 'pt-6');
+                desc.innerText = 'この機能は準備中です。現在は書き込みモードのみ動作します。';
             }
-
-            document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
-            document.getElementById('fileInput').accept = mode === 'img2pdf' ? 'image/jpeg,image/png' : 'application/pdf';
-            document.getElementById('mode-description').textContent = modeDescriptions[mode];
-            
-            if (oldMode !== newMode) {
-                const isSingleMode = (newMode === 'split' || newMode === 'remove' || newMode === 'write' || newMode === 'pdf2img' || newMode === 'compress');
-                const isImgMode = (newMode === 'img2pdf');
-                
-                if (isImgMode !== (oldMode === 'img2pdf') && files.length > 0) {
-                    clearAll();
-                } else if (isSingleMode && files.length > 1) {
-                    showToast(`このモードは1ファイル専用です。クリアしました。`);
-                    clearAll();
-                } else if (newMode === 'write' && files.length > 0) {
-                    showLoading(true, "準備中...");
-                    loadWritePdf(files[0].data).then(() => showLoading(false));
-                }
-            }
-            updateStats();
         }
 
-        // File handling UI
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
-        dropZone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => handleFiles(e.target.files);
-        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
-        dropZone.ondragleave = () => dropZone.classList.remove('dragover');
-        dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); };
 
-        async function handleFiles(newFiles) {
-            if (newFiles.length === 0) return;
-            if ((mode === 'split' || mode === 'remove' || mode === 'write' || mode === 'pdf2img' || mode === 'compress') && files.length > 0) {
-                clearAll();
-            }
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) processFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) processFile(e.target.files[0]);
+        });
 
-            showLoading(true, "読込中...");
-            for (let f of newFiles) {
-                if ((mode === 'split' || mode === 'remove' || mode === 'write' || mode === 'pdf2img' || mode === 'compress') && files.length > 0) break;
-                if (mode === 'img2pdf' && !f.type.startsWith('image/')) continue;
-                if (mode !== 'img2pdf' && f.type !== 'application/pdf') continue;
-
-                const id = Math.random().toString(36).substr(2, 9);
-                const arrayBuffer = await f.arrayBuffer();
-                let pages = 0; let previewUrl = '';
-                
-                if (f.type === 'application/pdf') {
-                    try {
-                        const pdf = await PDFDocument.load(arrayBuffer.slice(0));
-                        pages = pdf.getPageCount();
-                        previewUrl = await generatePdfPreview(arrayBuffer.slice(0));
-                    } catch(e) { continue; }
-                } else {
-                    previewUrl = URL.createObjectURL(new Blob([arrayBuffer]));
-                }
-                files.push({ id, name: f.name, type: f.type, data: arrayBuffer, pages, rotation: 0, previewUrl });
-            }
-            renderFileList();
-            if (mode === 'write' && files.length > 0) await loadWritePdf(files[0].data);
-            updateStats();
-            showLoading(false);
-            fileInput.value = '';
-        }
-
-        async function generatePdfPreview(buffer) {
-            try {
-                const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 0.3 });
-                const canvas = document.createElement('canvas');
-                canvas.height = viewport.height; canvas.width = viewport.width;
-                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-                return canvas.toDataURL();
-            } catch (err) { return ''; }
-        }
-
-        function renderFileList() {
-            if (mode === 'write') return; 
-            const container = document.getElementById('fileList');
-            container.innerHTML = '';
-            document.getElementById('emptyState').style.display = files.length === 0 ? 'flex' : 'none';
-
-            files.forEach((f) => {
-                const card = document.createElement('div');
-                card.className = "file-card bg-white border border-slate-200 rounded-2xl p-4 flex flex-col h-full";
-                
-                if (mode === 'merge' || mode === 'nup') {
-                    card.draggable = true; card.style.cursor = 'grab'; card.dataset.id = f.id;
-                    card.addEventListener('dragstart', handleDragStart);
-                    card.addEventListener('dragover', handleDragOver);
-                    card.addEventListener('dragenter', handleDragEnter);
-                    card.addEventListener('dragleave', handleDragLeave);
-                    card.addEventListener('drop', handleDrop);
-                    card.addEventListener('dragend', handleDragEnd);
-                }
-
-                card.innerHTML = `
-                    <div class="flex items-start gap-3 mb-3 pointer-events-none">
-                        <div class="w-16 h-20 bg-slate-50 border rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
-                            ${f.previewUrl ? `<img src="${f.previewUrl}" class="max-h-full" style="transform: rotate(${f.rotation}deg)">` : ''}
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold truncate">${f.name}</p>
-                            <p class="text-xs text-slate-400">${f.pages || 1} ページ</p>
-                        </div>
-                    </div>
-                    <div class="mt-auto pt-3 border-t flex justify-between">
-                        <button onclick="rotateFile('${f.id}')" class="text-slate-500 hover:text-indigo-600 p-1 relative z-10">⟳ 回転</button>
-                        <button onclick="removeFile('${f.id}')" class="text-red-500 p-1 relative z-10">削除</button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-            if (mode === 'split') renderVisualSplitter();
-            else if (mode === 'remove') renderVisualRemover();
-        }
-
-        // Drag features
-        let draggedFileId = null;
-        function handleDragStart(e) { draggedFileId = this.dataset.id; this.classList.add('opacity-40'); }
-        function handleDragOver(e) { e.preventDefault(); return false; }
-        function handleDragEnter(e) { e.preventDefault(); if (this.dataset.id !== draggedFileId) this.classList.add('bg-blue-50'); }
-        function handleDragLeave(e) { this.classList.remove('bg-blue-50'); }
-        function handleDrop(e) {
-            e.stopPropagation(); this.classList.remove('bg-blue-50');
-            const targetId = this.dataset.id;
-            if (draggedFileId && draggedFileId !== targetId) {
-                const draggedIdx = files.findIndex(f => f.id === draggedFileId);
-                const targetIdx = files.findIndex(f => f.id === targetId);
-                files.splice(targetIdx, 0, files.splice(draggedIdx, 1)[0]);
-                renderFileList();
-            }
-            return false;
-        }
-        function handleDragEnd(e) { this.classList.remove('opacity-40'); draggedFileId = null; }
-
-        window.rotateFile = (id) => { const f = files.find(x => x.id === id); f.rotation = (f.rotation + 90) % 360; renderFileList(); };
-        window.removeFile = (id) => { files = files.filter(x => x.id !== id); renderFileList(); updateStats(); };
-        document.getElementById('clearBtn').onclick = clearAll;
-
-        function clearAll() {
-            files = []; writeAnnotations = {};
-            const writeLayer = document.getElementById('writeAnnotationLayer');
-            if (writeLayer) writeLayer.innerHTML = '';
-            document.getElementById('pdfPageWrapper')?.classList.add('hidden');
-            document.getElementById('writeEmptyState')?.classList.remove('hidden');
-            renderFileList(); updateStats();
-        }
-
-        function updateStats() {
-            document.getElementById('fileCount').textContent = `${files.length} ファイル`;
-            const canProcess = (mode === 'merge' && files.length >= 2) || 
-                             (mode === 'img2pdf' && files.length >= 1) ||
-                             (files.length === 1);
+        async function processFile(file) {
+            if (file.type !== 'application/pdf') { alert('PDFファイルを選択してください。'); return; }
+            if (currentMode !== 'write') { alert('現在プレビュー機能は「書き込みモード」でのみ動作します。タブを切り替えてください。'); return; }
             
-            document.getElementById('processBtn').disabled = !canProcess;
+            const arrayBuffer = await file.arrayBuffer();
+            pdfBytes = arrayBuffer;
             
-            const floatingBtn = document.getElementById('floatingProcessBtn');
-            if (mode === 'write' && canProcess) {
-                floatingBtn.classList.remove('hidden');
-            } else {
-                floatingBtn.classList.add('hidden');
-            }
-            document.getElementById('resultArea').classList.add('hidden');
+            // レイアウトの変更（左カラムを縮小し、右にプレビューを表示）
+            document.getElementById('leftColumn').classList.remove('lg:col-span-12');
+            document.getElementById('leftColumn').classList.add('lg:col-span-4');
+            
+            // ActionCardのフレックス表示を解除して縦並びに
+            const actionCard = document.getElementById('mainActionCard');
+            actionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between');
+            actionCard.classList.add('flex-col');
+            document.getElementById('actionCardHeader').classList.remove('lg:w-1/4', 'lg:mb-0');
+            document.getElementById('actionCardHeader').classList.add('mb-4');
+            
+            // プレビューカラムの表示
+            const previewColumn = document.getElementById('previewColumn');
+            previewColumn.classList.remove('hidden');
+            previewColumn.classList.add('flex');
+            
+            // PDF.js にロード
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            pdfjsDoc = await loadingTask.promise;
+            
+            renderPage(1);
         }
 
-        // --- Write Mode Functions ---
-        async function loadWritePdf(arrayBuffer) {
-            document.getElementById('pdfPageWrapper').classList.remove('hidden');
-            document.getElementById('writeEmptyState').classList.add('hidden');
-            pdfDocProxy = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
-            totalWritePages = pdfDocProxy.numPages;
-            currentWritePage = 1; writeAnnotations = {}; pdfViewports = {};
+        async function renderPage(num) {
+            saveCurrentAnnotations();
+            currentPageNum = num;
+            document.getElementById('pageIndicator').innerText = `Page ${num} / ${pdfjsDoc.numPages}`;
             
-            const page = await pdfDocProxy.getPage(1);
-            const unscaled = page.getViewport({ scale: 1.0 });
+            const page = await pdfjsDoc.getPage(num);
+            const container = document.getElementById('previewContainer');
             
-            // 安全なスケール計算
-            let containerWidth = document.getElementById('pdfEditorContainer').clientWidth;
-            if (!containerWidth || containerWidth < 100) containerWidth = 800;
-            writeCurrentScale = Math.max(0.5, Math.min(3.0, (containerWidth - 40) / unscaled.width));
-            updateZoomUI();
+            // 表示スケール調整
+            const unscaledViewport = page.getViewport({ scale: 1.0 });
+            // コンテナの幅に合わせてスケールを計算（パディング分を引く）
+            const scale = Math.min((container.clientWidth - 40) / unscaledViewport.width, 1.5);
+            const viewport = page.getViewport({ scale: scale });
             
-            document.getElementById('writePageIndicator').textContent = `1 / ${totalWritePages}`;
-            await renderWritePage(1);
-
-            document.getElementById('writePrevBtn').onclick = () => {
-                if (currentWritePage > 1) {
-                    currentWritePage--;
-                    document.getElementById('writePageIndicator').textContent = `${currentWritePage} / ${totalWritePages}`;
-                    renderWritePage(currentWritePage);
-                }
-            };
-            document.getElementById('writeNextBtn').onclick = () => {
-                if (currentWritePage < totalWritePages) {
-                    currentWritePage++;
-                    document.getElementById('writePageIndicator').textContent = `${currentWritePage} / ${totalWritePages}`;
-                    renderWritePage(currentWritePage);
-                }
-            };
-        }
-
-        function updateZoomUI() { document.getElementById('zoomLevel').textContent = Math.round(writeCurrentScale * 100) + '%'; }
-
-        async function renderWritePage(pageNum) {
-            const page = await pdfDocProxy.getPage(pageNum);
-            const canvas = document.getElementById('writePdfCanvas');
+            const canvas = document.getElementById('pdfCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            
+            // アノテーションレイヤーのサイズをCanvasに完全一致させる
             const layer = document.getElementById('writeAnnotationLayer');
-            const textLayerDiv = document.getElementById('textLayer');
+            layer.style.width = `${viewport.width}px`;
+            layer.style.height = `${viewport.height}px`;
 
-            pdfViewports[pageNum] = page.getViewport({ scale: 1.0 });
-            const viewport = page.getViewport({ scale: writeCurrentScale });
-            canvas.width = viewport.width; canvas.height = viewport.height;
-            document.getElementById('pdfPageWrapper').style.width = `${viewport.width}px`;
-            document.getElementById('pdfPageWrapper').style.height = `${viewport.height}px`;
+            // 出力時の座標変換用に現在の寸法を記録
+            pageViewData[num] = { layerWidth: viewport.width, layerHeight: viewport.height };
 
-            await page.render({ canvasContext: canvas.getContext('2d', { willReadFrequently: true }), viewport }).promise;
-            
-            textLayerDiv.innerHTML = '';
-            textLayerDiv.style.width = `${viewport.width}px`; textLayerDiv.style.height = `${viewport.height}px`;
-            textLayerDiv.style.setProperty('--scale-factor', viewport.scale);
-            try {
-                pdfjsLib.renderTextLayer({
-                    textContentSource: await page.getTextContent(),
-                    container: textLayerDiv, viewport, textDivs: []
-                });
-            } catch (e) {}
-
-            layer.innerHTML = '';
-            if (writeAnnotations[pageNum]) writeAnnotations[pageNum].forEach(ann => createTextAreaElement(ann));
+            // アノテーションの復元
+            layer.innerHTML = pageAnnotations[num] || '';
         }
 
-        function addWriteAnnotation(pageNum, x, y, customWidth = undefined, customHeight = undefined) {
-            if (!writeAnnotations[pageNum]) writeAnnotations[pageNum] = [];
-            let fontSize = parseInt(document.getElementById('annFontSize').value) || 14;
-            
-            // 背景のテキストからフォントサイズを取得
-            const bgFontSize = getBackgroundFontSize(x, y);
-            if (bgFontSize) {
-                fontSize = bgFontSize;
-                document.getElementById('annFontSize').value = fontSize; 
-            } else if (customHeight !== undefined && customHeight !== null) {
-                // 枠の高さからフォントサイズを推定（スケール補正後の高さの約60%）
-                let hUnscaled = customHeight / writeCurrentScale;
-                if (hUnscaled < 60) { // 1行用とみなす
-                    fontSize = Math.max(8, Math.min(72, Math.round(hUnscaled * 0.6)));
-                    document.getElementById('annFontSize').value = fontSize;
-                }
+        function changePage(delta) {
+            if (!pdfjsDoc) return;
+            const newNum = currentPageNum + delta;
+            if (newNum >= 1 && newNum <= pdfjsDoc.numPages) {
+                renderPage(newNum);
             }
-            
-            // フォントサイズに応じてデフォルトの枠サイズを計算
-            const defaultWidth = Math.max(300, fontSize * 8);
-            const defaultHeight = fontSize * 1.5 + 16;
-            
-            const w = (customWidth !== undefined && customWidth !== null) ? customWidth / writeCurrentScale : defaultWidth;
-            const h = (customHeight !== undefined && customHeight !== null) ? customHeight / writeCurrentScale : defaultHeight;
-
-            const ann = { 
-                id: Date.now().toString(), 
-                x: x / writeCurrentScale, y: y / writeCurrentScale, 
-                width: w, height: h, text: '',
-                color: document.getElementById('annColor').value,
-                fontSize, fontFamily: document.getElementById('annFontFamily').value
-            };
-            writeAnnotations[pageNum].push(ann);
-            createTextAreaElement(ann);
         }
 
-        function createTextAreaElement(ann) {
-            const layer = document.getElementById('writeAnnotationLayer');
+        const layer = document.getElementById('writeAnnotationLayer');
+        
+        layer.addEventListener('click', (e) => {
+            if (e.target !== layer) return; // 既存の要素クリック時は新規作成しない
+            const rect = layer.getBoundingClientRect();
+            createAnnotation(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        function createAnnotation(x, y, text = '', fontSize = '16px', width = 'auto') {
             const wrapper = document.createElement('div');
-            wrapper.className = 'absolute group annotation-wrapper';
-            wrapper.style.left = `${ann.x * writeCurrentScale}px`;
-            wrapper.style.top = `${ann.y * writeCurrentScale}px`;
-            
-            const textarea = document.createElement('textarea');
-            textarea.id = `textarea-${ann.id}`;
-            textarea.className = 'annotation-textarea custom-scrollbar';
-            textarea.style.width = `${ann.width * writeCurrentScale}px`;
-            textarea.style.height = `${ann.height * writeCurrentScale}px`;
-            textarea.style.color = ann.color;
-            textarea.style.fontSize = `${ann.fontSize * writeCurrentScale}px`;
-            textarea.style.fontFamily = ann.fontFamily === 'mincho' ? 'serif' : 'sans-serif';
-            textarea.value = ann.text;
-            textarea.placeholder = "テキストを入力";
-            
-            textarea.addEventListener('input', e => ann.text = e.target.value);
-            textarea.addEventListener('focus', () => {
-                activeAnnotationId = ann.id;
-                document.getElementById('annColor').value = ann.color;
-                document.getElementById('annFontSize').value = ann.fontSize;
-                document.getElementById('annFontFamily').value = ann.fontFamily || 'gothic';
-            });
-
-            new ResizeObserver(() => {
-                if (textarea.offsetWidth > 0) {
-                    ann.width = textarea.offsetWidth / writeCurrentScale;
-                    ann.height = textarea.offsetHeight / writeCurrentScale;
-                }
-            }).observe(textarea);
-
-            const delBtn = document.createElement('div');
-            delBtn.className = 'annotation-delete flex items-center justify-center';
-            delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" /></svg>';
-            delBtn.title = "削除";
-            delBtn.onclick = (e) => {
-                e.stopPropagation();
-                writeAnnotations[currentWritePage] = writeAnnotations[currentWritePage].filter(a => a.id !== ann.id);
-                wrapper.remove();
-            };
+            wrapper.className = 'annotation-wrapper';
+            wrapper.style.left = `${x}px`;
+            wrapper.style.top = `${y}px`;
 
             const dragHandle = document.createElement('div');
-            dragHandle.className = 'annotation-drag-handle flex items-center justify-center';
-            dragHandle.title = "ドラッグして移動";
-            dragHandle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>';
-            let isDragging = false, startX, startY, initL, initT;
-            dragHandle.onmousedown = (e) => {
-                e.preventDefault(); isDragging = true; startX = e.clientX; startY = e.clientY;
-                initL = parseFloat(wrapper.style.left); initT = parseFloat(wrapper.style.top);
-                const onMove = ev => {
-                    if (!isDragging) return;
-                    wrapper.style.left = `${initL + ev.clientX - startX}px`;
-                    wrapper.style.top = `${initT + ev.clientY - startY}px`;
-                };
-                const onUp = () => {
-                    isDragging = false;
-                    ann.x = parseFloat(wrapper.style.left) / writeCurrentScale;
-                    ann.y = parseFloat(wrapper.style.top) / writeCurrentScale;
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                };
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
-            };
+            dragHandle.className = 'annotation-drag-handle';
+            dragHandle.innerHTML = '⋮⋮';
 
-            wrapper.appendChild(dragHandle); wrapper.appendChild(textarea); wrapper.appendChild(delBtn);
+            const deleteBtn = document.createElement('div');
+            deleteBtn.className = 'annotation-delete';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.onclick = () => wrapper.remove();
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'annotation-textarea';
+            textarea.style.fontSize = fontSize;
+            if(width !== 'auto') textarea.style.width = width;
+            textarea.value = text;
+            textarea.placeholder = 'テキストを入力';
+
+            wrapper.appendChild(dragHandle);
+            wrapper.appendChild(deleteBtn);
+            wrapper.appendChild(textarea);
             layer.appendChild(wrapper);
-            
-            if (ann.text === '') setTimeout(() => textarea.focus(), 50);
+            textarea.focus();
         }
 
-        function updateActiveAnnotation(key, value) {
-            const ann = (writeAnnotations[currentWritePage] || []).find(a => a.id === activeAnnotationId);
-            if (ann) {
-                ann[key] = value;
-                const ta = document.getElementById(`textarea-${ann.id}`);
-                if (ta) {
-                    if (key === 'color') ta.style.color = value;
-                    if (key === 'fontSize') {
-                        ta.style.fontSize = `${value * writeCurrentScale}px`;
-                        ta.style.height = `${(value * 1.5 + 16) * writeCurrentScale}px`;
-                        ann.height = (value * 1.5 + 16);
-                        
-                        const minWidth = value * 8;
-                        if (ann.width < minWidth) {
-                            ta.style.width = `${minWidth * writeCurrentScale}px`;
-                            ann.width = minWidth;
-                        }
-                    }
-                    if (key === 'fontFamily') ta.style.fontFamily = value === 'mincho' ? 'serif' : 'sans-serif';
-                }
+        function adjustFontSize(delta) {
+            const active = document.activeElement;
+            if (active && active.classList.contains('annotation-textarea')) {
+                const currentSize = parseFloat(window.getComputedStyle(active).fontSize);
+                active.style.fontSize = `${currentSize + delta}px`;
             }
         }
 
-        // --- Visual Split & Remove Placeholders (Shortened) ---
-        async function renderVisualSplitter() {}
-        async function renderVisualRemover() {}
-        window.openPreviewModal = () => {};
-        window.closePreviewModal = () => {};
+        let isDragging = false;
+        let dragTarget = null;
+        let dragOffsetX = 0; let dragOffsetY = 0;
 
-        // --- Processing Helpers ---
-        function showLoading(show, text = "処理中...") {
-            const overlay = document.getElementById('loadingOverlay');
-            document.getElementById('loadingText').textContent = text;
-            overlay.style.display = show ? 'flex' : 'none';
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('annotation-drag-handle')) {
+                isDragging = true;
+                dragTarget = e.target.closest('.annotation-wrapper');
+                const rect = dragTarget.getBoundingClientRect();
+                dragOffsetX = e.clientX - rect.left;
+                dragOffsetY = e.clientY - rect.top;
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging && dragTarget) {
+                const lRect = layer.getBoundingClientRect();
+                dragTarget.style.left = `${e.clientX - lRect.left - dragOffsetX}px`;
+                dragTarget.style.top = `${e.clientY - lRect.top - dragOffsetY}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => { isDragging = false; dragTarget = null; });
+
+        function saveCurrentAnnotations() {
+            if (!pdfjsDoc) return;
+            const textareas = layer.querySelectorAll('textarea');
+            textareas.forEach(t => {
+                t.textContent = t.value; 
+                // 出力計算用に画面上の実寸幅を記録
+                t.style.width = `${t.clientWidth}px`; 
+            });
+            pageAnnotations[currentPageNum] = layer.innerHTML;
         }
 
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            document.getElementById('toastMsg').textContent = msg;
-            t.classList.remove('opacity-0');
-            setTimeout(() => t.classList.add('opacity-0'), 3000);
-        }
-
-        function showResult(msg, filename) {
-            document.getElementById('resultArea').classList.remove('hidden');
-            document.getElementById('resultInfo').textContent = msg;
-            document.getElementById('downloadBtn').onclick = () => {
-                const url = URL.createObjectURL(resultBlob);
-                const a = document.createElement('a'); a.href = url; a.download = filename;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            };
-        }
-
-        // --- 日本語の折り返し処理 ---
-        function wrapText(text, maxWidth, font, fontSize) {
+        // 【修正ポイント】画面上の幅に合わせてテキストをPDF用の行配列に正確に分割する関数
+        function wrapTextForPDF(text, pdfMaxWidth, font, fontSize) {
             const lines = [];
-            const paragraphs = text.split('\n');
+            const paragraphs = text.split('\n'); // ユーザーの明示的な改行
             
             for (const paragraph of paragraphs) {
+                if (paragraph === '') { lines.push(''); continue; }
+                
                 let currentLine = '';
                 for (let i = 0; i < paragraph.length; i++) {
                     const char = paragraph[i];
                     const testLine = currentLine + char;
-                    const testWidth = font.widthOfTextAtSize(testLine, fontSize);
+                    // pdf-libのfont機能で幅を測定
+                    const width = font.widthOfTextAtSize(testLine, fontSize);
                     
-                    if (testWidth > maxWidth && currentLine.length > 0) {
+                    if (width > pdfMaxWidth && currentLine.length > 0) {
                         lines.push(currentLine);
                         currentLine = char;
                     } else {
                         currentLine = testLine;
                     }
                 }
-                lines.push(currentLine);
+                if (currentLine.length > 0) lines.push(currentLine);
             }
-            return lines.join('\n');
+            return lines;
         }
 
-        // 共通フォント取得関数
-        async function fetchValidFont(urls) {
-            for (const url of urls) {
-                try {
-                    const fontRes = await fetch(url);
-                    if (fontRes.ok) {
-                        const buffer = await fontRes.arrayBuffer();
-                        const headerStr = String.fromCharCode(...new Uint8Array(buffer.slice(0, 10)));
-                        if (!headerStr.includes('<html') && !headerStr.includes('<!DOCTYPE')) {
-                            return buffer;
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`Font fetch failed: ${url}`, e);
-                }
-            }
-            return null;
-        }
+        async function exportPdf() {
+            if (!pdfBytes) return;
+            saveCurrentAnnotations();
+            
+            const btn = document.getElementById('exportBtn');
+            const origText = btn.innerHTML;
+            btn.innerHTML = '<span class="animate-spin mr-2">⏳</span> 処理中...';
+            btn.disabled = true;
 
-        // --- Execute Process ---
-        document.getElementById('processBtn').onclick = async () => {
-            showLoading(true, "処理中...");
             try {
-                if (mode === 'write') await processWrite();
-                else if (mode === 'merge') await processMerge();
-                else if (mode === 'nup') await processNup();
-                else if (mode === 'split') await processSplit();
-                else if (mode === 'remove') await processRemove();
-                else if (mode === 'img2pdf') await processImg2Pdf();
-                else if (mode === 'pdf2img') await processPdf2Img();
-                else if (mode === 'compress') await processCompress();
-            } catch (e) { 
-                console.error(e);
-                if (!['No points selected', 'Invalid range', 'All pages removed'].includes(e.message)) {
-                    showToast("エラーが発生しました: " + (e.message || "")); 
-                }
-            }
-            showLoading(false);
-        };
-
-        async function processWrite() {
-            const f = files[0];
-            
-            showLoading(true, "日本語フォントを準備中...");
-            
-            const pdfDoc = await PDFDocument.load(f.data.slice(0));
-            pdfDoc.registerFontkit(window.fontkit);
-            
-            // 使われているフォントの種類を特定
-            const usedFonts = new Set();
-            for (let pNum in writeAnnotations) {
-                writeAnnotations[pNum].forEach(ann => usedFonts.add(ann.fontFamily || 'gothic'));
-            }
-
-            const customFonts = {};
-
-            // ゴシック体の読み込み
-            if (usedFonts.has('gothic') || usedFonts.size === 0) {
-                const fontUrlsGothic = [
-                    'https://raw.githubusercontent.com/google/fonts/main/ofl/kosugimaru/KosugiMaru-Regular.ttf',
-                    'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/kosugimaru/KosugiMaru-Regular.ttf',
-                    'https://raw.githubusercontent.com/google/fonts/main/ofl/sawarabigothic/SawarabiGothic-Regular.ttf'
-                ];
-                let fontBytesGothic = await fetchValidFont(fontUrlsGothic);
-                if (!fontBytesGothic) throw new Error('ゴシックフォントの取得に失敗しました。');
-                customFonts['gothic'] = await pdfDoc.embedFont(fontBytesGothic);
-            }
-
-            // 明朝体の読み込み
-            if (usedFonts.has('mincho')) {
-                const fontUrlsMincho = [
-                    'https://raw.githubusercontent.com/google/fonts/main/ofl/sawarabimincho/SawarabiMincho-Regular.ttf',
-                    'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/sawarabimincho/SawarabiMincho-Regular.ttf'
-                ];
-                let fontBytesMincho = await fetchValidFont(fontUrlsMincho);
-                if (!fontBytesMincho) throw new Error('明朝フォントの取得に失敗しました。');
-                customFonts['mincho'] = await pdfDoc.embedFont(fontBytesMincho);
-            }
-
-            showLoading(true, "テキストを書き込み中...");
-
-            const pages = pdfDoc.getPages();
-            for (let pNum in writeAnnotations) {
-                const pageIndex = parseInt(pNum) - 1;
-                if (pageIndex < 0 || pageIndex >= pages.length) continue;
+                const libDoc = await PDFLib.PDFDocument.load(pdfBytes);
                 
-                const page = pages[pageIndex];
-                const rot = page.getRotation().angle || 0;
-                const { width: pw, height: ph } = page.getSize();
-                const unscaledViewport = pdfViewports[pNum];
-                if (!unscaledViewport) continue;
-                
-                let vw = pw, vh = ph;
-                if (rot === 90 || rot === 270) {
-                    vw = ph; vh = pw;
-                }
+                // 日本語フォントの読み込み
+                libDoc.registerFontkit(window.fontkit);
+                const fontUrl = 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75vY0xw-oT7s.ttf';
+                const fontRes = await fetch(fontUrl);
+                const fontBuffer = await fontRes.arrayBuffer();
+                const customFont = await libDoc.embedFont(fontBuffer);
 
-                const scaleX = vw / unscaledViewport.width;
-                const scaleY = vh / unscaledViewport.height;
+                const pages = libDoc.getPages();
 
-                writeAnnotations[pNum].forEach(ann => {
-                    if (!ann.text.trim()) return;
+                // 編集が行われた全ページに対して処理
+                for (let pNumStr in pageAnnotations) {
+                    const pNum = parseInt(pNumStr);
+                    const htmlContent = pageAnnotations[pNum];
+                    if (!htmlContent) continue;
+
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = htmlContent;
+                    const wrappers = tempDiv.querySelectorAll('.annotation-wrapper');
+                    if (wrappers.length === 0) continue;
+
+                    const page = pages[pNum - 1];
+                    const { width: pdfWidth, height: pdfHeight } = page.getSize();
                     
-                    const ptSize = ann.fontSize * scaleY;
-                    const vx = (ann.x + 6) * scaleX;
-                    const vy = (ann.y + 4) * scaleY;
-                    const maxWidth = Math.max(1, (ann.width - 12) * scaleX);
+                    // 描画当時のHTMLレイヤーサイズからスケールを計算
+                    const viewData = pageViewData[pNum];
+                    const scaleX = pdfWidth / viewData.layerWidth;
+                    const scaleY = pdfHeight / viewData.layerHeight;
 
-                    const selectedFont = customFonts[ann.fontFamily || 'gothic'];
-                    const wrappedText = wrapText(ann.text, maxWidth, selectedFont, ptSize);
+                    wrappers.forEach(wrapper => {
+                        const textarea = wrapper.querySelector('textarea');
+                        const text = textarea.textContent;
+                        if (!text.trim()) return;
 
-                    const px = vx;
-                    const py = vh - (vy + ptSize * 0.8);
+                        // 位置とスタイルの取得
+                        const htmlLeft = parseFloat(wrapper.style.left);
+                        const htmlTop = parseFloat(wrapper.style.top);
+                        const htmlFontSize = parseFloat(textarea.style.fontSize) || 16;
+                        
+                        // textareaのpadding (CSS: 4px 6px)
+                        const paddingLeft = 6; const paddingTop = 4; const paddingRight = 6;
 
-                    let pdfX, pdfY;
-                    let drawRot = -rot;
+                        // 実質的な描画開始座標 (HTML上)
+                        const actualHtmlX = htmlLeft + paddingLeft;
+                        const actualHtmlY = htmlTop + paddingTop;
 
-                    if (rot === 0) {
-                        pdfX = px;
-                        pdfY = py;
-                    } else if (rot === 90) {
-                        pdfX = pw - py;
-                        pdfY = px;
-                    } else if (rot === 180) {
-                        pdfX = pw - px;
-                        pdfY = ph - py;
-                    } else if (rot === 270) {
-                        pdfX = py;
-                        pdfY = ph - px;
-                    }
-                    
-                    const r = parseInt(ann.color.slice(1, 3), 16) / 255;
-                    const g = parseInt(ann.color.slice(3, 5), 16) / 255;
-                    const b = parseInt(ann.color.slice(5, 7), 16) / 255;
+                        // PDFの座標・スケールへ変換
+                        const pdfX = actualHtmlX * scaleX;
+                        const pdfFontSize = htmlFontSize * scaleY;
+                        
+                        // HTML上の文字描画幅限界をPDFスケールに変換（枠からのはみ出し対策）
+                        const htmlMaxWidth = parseFloat(textarea.style.width) - paddingLeft - paddingRight;
+                        const pdfMaxWidth = htmlMaxWidth * scaleX;
 
-                    page.drawText(wrappedText, {
-                        x: pdfX,
-                        y: pdfY,
-                        size: ptSize,
-                        font: selectedFont,
-                        lineHeight: ptSize * 1.5,
-                        color: rgb(r, g, b),
-                        rotate: degrees(drawRot)
-                    });
-                });
-            }
-            const bytes = await pdfDoc.save();
-            resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult('PDFに書き込み、保存しました。', `annotated_${f.name}`);
-        }
+                        // テキストの自動折り返し計算
+                        const wrappedLines = wrapTextForPDF(text, pdfMaxWidth, customFont, pdfFontSize);
 
-        async function processMerge() {
-            const mergedPdf = await PDFDocument.create();
-            for (let f of files) {
-                const doc = await PDFDocument.load(f.data.slice(0));
-                const copiedPages = await mergedPdf.copyPages(doc, doc.getPageIndices());
-                copiedPages.forEach(p => {
-                    if (f.rotation !== 0) {
-                        const currentRot = p.getRotation().angle;
-                        p.setRotation(degrees(currentRot + f.rotation));
-                    }
-                    mergedPdf.addPage(p);
-                });
-            }
-            const bytes = await mergedPdf.save();
-            resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult('選択したPDFを1つに結合しました。', `merged_${Date.now()}.pdf`);
-        }
+                        // 【修正ポイント】座標系の変換 (HTMLの左上原点 → PDFの左下原点)
+                        // ベースライン（文字の下端）のズレも補正して、文字が逆さまにならず正確な位置に出力されるようにする
+                        const baselineOffset = pdfFontSize * 0.8; 
+                        const pdfStartY = pdfHeight - (actualHtmlY * scaleY) - baselineOffset;
+                        const pdfLineHeight = pdfFontSize * 1.5; 
 
-        async function processNup() {
-            const nupCount = parseInt(document.querySelector('input[name="nupCount"]:checked').value);
-            const orientation = document.querySelector('input[name="nupOrientation"]:checked').value;
-            const order = document.querySelector('input[name="nupOrder"]:checked').value;
-
-            const mergedPdf = await PDFDocument.create();
-            
-            const A4_WIDTH = 595.28;
-            const A4_HEIGHT = 841.89;
-
-            const pageW = orientation === 'landscape' ? A4_HEIGHT : A4_WIDTH;
-            const pageH = orientation === 'landscape' ? A4_WIDTH : A4_HEIGHT;
-
-            let cols, rows;
-            if (nupCount === 2) {
-                if (orientation === 'portrait') { cols = 1; rows = 2; }
-                else { cols = 2; rows = 1; }
-            } else if (nupCount === 4) {
-                cols = 2; rows = 2;
-            } else if (nupCount === 6) {
-                if (orientation === 'portrait') { cols = 2; rows = 3; }
-                else { cols = 3; rows = 2; }
-            } else if (nupCount === 8) {
-                if (orientation === 'portrait') { cols = 2; rows = 4; }
-                else { cols = 4; rows = 2; }
-            } else if (nupCount === 9) {
-                cols = 3; rows = 3;
-            }
-
-            const cellW = pageW / cols;
-            const cellH = pageH / rows;
-
-            let embeddedPages = [];
-            for (let f of files) {
-                const doc = await PDFDocument.load(f.data.slice(0));
-                const pages = doc.getPages();
-                
-                for (let i = 0; i < pages.length; i++) {
-                    const page = pages[i];
-                    const originalRot = page.getRotation().angle || 0;
-                    const totalRot = (originalRot + f.rotation) % 360;
-                    const embeddedPage = await mergedPdf.embedPage(page);
-                    
-                    embeddedPages.push({
-                        page: embeddedPage,
-                        rotation: totalRot
+                        // 各行の描画 (Y座標をマイナスしていくことで下へ下へ描画される)
+                        wrappedLines.forEach((line, index) => {
+                            page.drawText(line, {
+                                x: pdfX,
+                                y: pdfStartY - (index * pdfLineHeight),
+                                size: pdfFontSize,
+                                font: customFont,
+                                color: PDFLib.rgb(0.1, 0.1, 0.1)
+                            });
+                        });
                     });
                 }
+
+                // 保存とダウンロード
+                const modifiedPdfBytes = await libDoc.save();
+                const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'edited_document.pdf';
+                a.click();
+                URL.revokeObjectURL(url);
+
+            } catch (error) {
+                console.error("PDF Export Error:", error);
+                alert("PDFの生成中にエラーが発生しました。");
+            } finally {
+                btn.innerHTML = origText;
+                btn.disabled = false;
             }
-
-            let currentPage;
-            for (let i = 0; i < embeddedPages.length; i++) {
-                if (i % nupCount === 0) {
-                    currentPage = mergedPdf.addPage([pageW, pageH]);
-                }
-
-                const { page: embeddedPage, rotation: fileRot } = embeddedPages[i];
-                const posInPage = i % nupCount;
-                
-                let col, row;
-                if (order === 'ltr') {
-                    col = posInPage % cols;
-                    row = Math.floor(posInPage / cols);
-                } else if (order === 'rtl') {
-                    col = (cols - 1) - (posInPage % cols);
-                    row = Math.floor(posInPage / cols);
-                } else if (order === 'ttb') {
-                    row = posInPage % rows;
-                    col = Math.floor(posInPage / rows);
-                }
-
-                const margin = 15;
-                const availableW = cellW - margin * 2;
-                const availableH = cellH - margin * 2;
-
-                const isRotated = fileRot === 90 || fileRot === 270;
-                const origW = embeddedPage.width;
-                const origH = embeddedPage.height;
-                
-                const viewW = isRotated ? origH : origW;
-                const viewH = isRotated ? origW : origH;
-
-                const scale = Math.min(availableW / viewW, availableH / viewH);
-                const scaledViewW = viewW * scale;
-                const scaledViewH = viewH * scale;
-
-                const cellX = (col * cellW) + margin;
-                const cellY = pageH - ((row + 1) * cellH) + margin;
-                
-                const x = cellX + (availableW - scaledViewW) / 2;
-                const y = cellY + (availableH - scaledViewH) / 2;
-
-                let drawX = x;
-                let drawY = y;
-                
-                if (fileRot === 90) {
-                    drawX = x + scaledViewW;
-                } else if (fileRot === 180) {
-                    drawX = x + scaledViewW;
-                    drawY = y + scaledViewH;
-                } else if (fileRot === 270) {
-                    drawY = y + scaledViewH;
-                }
-
-                currentPage.drawPage(embeddedPage, {
-                    x: drawX,
-                    y: drawY,
-                    width: origW * scale,
-                    height: origH * scale,
-                    rotate: degrees(fileRot)
-                });
-            }
-
-            const bytes = await mergedPdf.save();
-            resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult(`${nupCount} in 1 のレイアウトで配置しました。`, `layout_${nupCount}in1_${Date.now()}.pdf`);
         }
-
-        async function processSplit() {
-            const f = files[0];
-            const sourceDoc = await PDFDocument.load(f.data.slice(0));
-            const total = sourceDoc.getPageCount();
-            const splitType = document.querySelector('input[name="splitType"]:checked').value;
-            const zip = new JSZip();
-
-            if (splitType === 'all') {
-                for (let i = 0; i < total; i++) {
-                    const newDoc = await PDFDocument.create();
-                    const [page] = await newDoc.copyPages(sourceDoc, [i]);
-                    if (f.rotation !== 0) page.setRotation(degrees(page.getRotation().angle + f.rotation));
-                    newDoc.addPage(page);
-                    zip.file(`page_${i+1}.pdf`, await newDoc.save());
-                }
-            } else if (splitType === 'visual') {
-                const points = Array.from(visualSplitPoints).sort((a, b) => a - b);
-                if (points.length === 0) {
-                    throw new Error('ハサミアイコンをクリックして分割位置を指定してください。');
-                }
-                const ranges = [];
-                let start = 1;
-                for (let p of points) { ranges.push({ start: start - 1, end: p - 1 }); start = p + 1; }
-                ranges.push({ start: start - 1, end: total - 1 });
-
-                for (let [idx, r] of ranges.entries()) {
-                    const newDoc = await PDFDocument.create();
-                    const pagesToCopy = Array.from({length: r.end - r.start + 1}, (_, i) => r.start + i);
-                    const copied = await newDoc.copyPages(sourceDoc, pagesToCopy);
-                    copied.forEach(p => {
-                        if (f.rotation !== 0) p.setRotation(degrees(p.getRotation().angle + f.rotation));
-                        newDoc.addPage(p);
-                    });
-                    const fileName = r.start === r.end ? `page_${r.start+1}.pdf` : `pages_${r.start+1}-${r.end+1}.pdf`;
-                    zip.file(fileName, await newDoc.save());
-                }
-            } else {
-                const rangeStr = document.getElementById('splitRangeInput').value;
-                const ranges = parseRanges(rangeStr, total);
-                if (ranges.length === 0) {
-                    throw new Error('有効な範囲を指定してください (例: 1-3)');
-                }
-                for (let [idx, r] of ranges.entries()) {
-                    const newDoc = await PDFDocument.create();
-                    const copied = await newDoc.copyPages(sourceDoc, r);
-                    copied.forEach(p => {
-                        if (f.rotation !== 0) p.setRotation(degrees(p.getRotation().angle + f.rotation));
-                        newDoc.addPage(p);
-                    });
-                    zip.file(`split_${idx+1}.pdf`, await newDoc.save());
-                }
-            }
-
-            resultBlob = await zip.generateAsync({ type: 'blob' });
-            showResult('PDFを指定条件で分割し、ZIPにまとめました。', `split_${f.name.replace('.pdf','')}.zip`);
-        }
-
-        async function processRemove() {
-            const f = files[0];
-            const sourceDoc = await PDFDocument.load(f.data.slice(0));
-            const total = sourceDoc.getPageCount();
-            
-            if (visualRemovePoints.size === total) {
-                throw new Error('All pages removed');
-            }
-            if (visualRemovePoints.size === 0) {
-                throw new Error('削除するページが選択されていません。');
-            }
-
-            const newDoc = await PDFDocument.create();
-            const pagesToKeep = [];
-            for (let i = 0; i < total; i++) {
-                if (!visualRemovePoints.has(i + 1)) pagesToKeep.push(i);
-            }
-
-            const copied = await newDoc.copyPages(sourceDoc, pagesToKeep);
-            copied.forEach(p => {
-                if (f.rotation !== 0) p.setRotation(degrees(p.getRotation().angle + f.rotation));
-                newDoc.addPage(p);
-            });
-
-            const bytes = await newDoc.save();
-            resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult(`${visualRemovePoints.size}ページを削除し、再構築しました。`, `cleaned_${f.name}`);
-        }
-
-        async function processPdf2Img() {
-            const f = files[0];
-            const format = document.querySelector('input[name="imgFormat"]:checked').value;
-            const scaleMultiplier = parseInt(document.querySelector('input[name="imgScale"]:checked').value);
-            const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-            const ext = format === 'jpeg' ? 'jpg' : 'png';
-            
-            const zip = new JSZip();
-            const loadingTask = pdfjsLib.getDocument({ data: f.data.slice(0) });
-            const pdf = await loadingTask.promise;
-            const totalPages = pdf.numPages;
-
-            for (let i = 1; i <= totalPages; i++) {
-                showLoading(true, `画像を生成中... (${i}/${totalPages} ページ)`);
-
-                const page = await pdf.getPage(i);
-                
-                const baseScale = 1.5; 
-                let viewport = page.getViewport({ scale: baseScale * scaleMultiplier });
-                
-                if (f.rotation !== 0) {
-                   viewport = page.getViewport({ scale: baseScale * scaleMultiplier, rotation: viewport.rotation + f.rotation });
-                }
-
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
-
-                if (format === 'jpeg') {
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                }
-
-                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, 0.95));
-                
-                const pageNumStr = String(i).padStart(String(totalPages).length, '0');
-                const fileName = `page_${pageNumStr}.${ext}`;
-                zip.file(fileName, blob);
-            }
-
-            showLoading(true, "ZIPファイルを生成中...");
-            resultBlob = await zip.generateAsync({ type: 'blob' });
-            showResult(`PDFを ${totalPages} 枚の画像に変換し、ZIPにまとめました。`, `images_${f.name.replace('.pdf','')}.zip`);
-        }
-
-        async function processImg2Pdf() {
-            const pdfDoc = await PDFDocument.create();
-            for (let f of files) {
-                const page = pdfDoc.addPage();
-                let img;
-                try {
-                    if (f.type === 'image/jpeg') img = await pdfDoc.embedJpg(f.data.slice(0));
-                    else if (f.type === 'image/png') img = await pdfDoc.embedPng(f.data.slice(0));
-                    else continue;
-                } catch (e) { continue; }
-
-                const { width, height } = img.scale(1);
-                page.setSize(width, height);
-                page.drawImage(img, { x: 0, y: 0, width, height });
-                if (f.rotation !== 0) page.setRotation(degrees(f.rotation));
-            }
-            const bytes = await pdfDoc.save();
-            resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            showResult('画像ファイルをPDFドキュメントに変換しました。', `images_${Date.now()}.pdf`);
-        }
-
-        async function processCompress() {
-            const f = files[0];
-            const compressMode = document.querySelector('input[name="compressMode"]:checked').value;
-            
-            if (compressMode === 'keep_text') {
-                showLoading(true, "テキスト保持で最適化中...");
-                const doc = await PDFDocument.load(f.data.slice(0));
-                doc.setTitle('');
-                doc.setAuthor('');
-                doc.setSubject('');
-                doc.setKeywords([]);
-                doc.setProducer('');
-                doc.setCreator('');
-                const bytes = await doc.save({ useObjectStreams: true });
-                resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            } else {
-                const qualitySetting = document.querySelector('input[name="compressQuality"]:checked').value;
-                let scale = 1.5;
-                let jpegQuality = 0.65;
-
-                if (qualitySetting === 'high') {
-                    scale = 2.0;
-                    jpegQuality = 0.85;
-                } else if (qualitySetting === 'medium') {
-                    scale = 1.5;
-                    jpegQuality = 0.65;
-                } else if (qualitySetting === 'low') {
-                    scale = 1.0;
-                    jpegQuality = 0.4;
-                }
-
-                const loadingTask = pdfjsLib.getDocument({ data: f.data.slice(0) });
-                const pdf = await loadingTask.promise;
-                const totalPages = pdf.numPages;
-                
-                const newPdf = await PDFDocument.create();
-                
-                for (let i = 1; i <= totalPages; i++) {
-                    showLoading(true, `画像化圧縮中... (${i}/${totalPages} ページ)`);
-                    const page = await pdf.getPage(i);
-                    
-                    let viewport = page.getViewport({ scale: scale });
-                    if (f.rotation !== 0) {
-                       viewport = page.getViewport({ scale: scale, rotation: viewport.rotation + f.rotation });
-                    }
-                    
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    
-                    ctx.fillStyle = "#ffffff";
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-                    
-                    const imgDataUrl = canvas.toDataURL('image/jpeg', jpegQuality);
-                    
-                    const img = await newPdf.embedJpg(imgDataUrl);
-                    const { width, height } = img.scale(1 / scale); 
-                    
-                    const newPage = newPdf.addPage([width, height]);
-                    newPage.drawImage(img, {
-                        x: 0,
-                        y: 0,
-                        width: width,
-                        height: height,
-                    });
-                }
-                const bytes = await newPdf.save();
-                resultBlob = new Blob([bytes], { type: 'application/pdf' });
-            }
-            
-            const beforeSize = (f.data.byteLength / 1024 / 1024).toFixed(2);
-            const afterSize = (resultBlob.size / 1024 / 1024).toFixed(2);
-            
-            showResult(`圧縮完了: ${beforeSize}MB → ${afterSize}MB`, `compressed_${f.name}`);
-        }
-
     </script>
 </body>
 </html>
