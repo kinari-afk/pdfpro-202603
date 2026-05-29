@@ -565,10 +565,11 @@
             try {
                 const libDoc = await PDFLib.PDFDocument.load(pdfBytes);
                 
-                // 日本語フォントの読み込み
-                libDoc.registerFontkit(window.fontkit);
-                const fontUrl = 'https://fonts.gstatic.com/s/notosansjp/v52/-F6jfjtqLzI2JPCgQBnw7HFyzSD-AsregP8VFBEj75vY0xw-oT7s.ttf';
+                // 日本語フォントの読み込み (安定したCDNのURLに変更)
+                libDoc.registerFontkit(window.fontkit || fontkit);
+                const fontUrl = 'https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp@0.2.3/NotoSansJP_400Regular.ttf';
                 const fontRes = await fetch(fontUrl);
+                if (!fontRes.ok) throw new Error("フォントファイルの取得に失敗しました");
                 const fontBuffer = await fontRes.arrayBuffer();
                 const customFont = await libDoc.embedFont(fontBuffer);
 
@@ -590,17 +591,18 @@
                     
                     // 描画当時のHTMLレイヤーサイズからスケールを計算
                     const viewData = pageViewData[pNum];
+                    if (!viewData) continue;
                     const scaleX = pdfWidth / viewData.layerWidth;
                     const scaleY = pdfHeight / viewData.layerHeight;
 
                     wrappers.forEach(wrapper => {
                         const textarea = wrapper.querySelector('textarea');
-                        const text = textarea.textContent;
-                        if (!text.trim()) return;
+                        const text = textarea.value || textarea.textContent;
+                        if (!text || !text.trim()) return;
 
                         // 位置とスタイルの取得
-                        const htmlLeft = parseFloat(wrapper.style.left);
-                        const htmlTop = parseFloat(wrapper.style.top);
+                        const htmlLeft = parseFloat(wrapper.style.left) || 0;
+                        const htmlTop = parseFloat(wrapper.style.top) || 0;
                         const htmlFontSize = parseFloat(textarea.style.fontSize) || 16;
                         
                         // textareaのpadding (CSS: 4px 6px)
@@ -615,7 +617,7 @@
                         const pdfFontSize = htmlFontSize * scaleY;
                         
                         // HTML上の文字描画幅限界をPDFスケールに変換（枠からのはみ出し対策）
-                        const htmlMaxWidth = parseFloat(textarea.style.width) - paddingLeft - paddingRight;
+                        const htmlMaxWidth = (parseFloat(textarea.style.width) || textarea.clientWidth) - paddingLeft - paddingRight;
                         const pdfMaxWidth = htmlMaxWidth * scaleX;
 
                         // テキストの自動折り返し計算
@@ -652,7 +654,7 @@
 
             } catch (error) {
                 console.error("PDF Export Error:", error);
-                alert("PDFの生成中にエラーが発生しました。");
+                alert("PDFの生成中にエラーが発生しました。\n詳細: " + error.message);
             } finally {
                 btn.innerHTML = origText;
                 btn.disabled = false;
