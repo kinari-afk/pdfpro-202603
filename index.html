@@ -8,7 +8,7 @@
     <!-- PDF作成・編集 -->
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <!-- フォント読み込み拡張 (pdf-lib fontkit) -->
-    <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit@0.0.4/dist/fontkit.umd.min.js"></script>
     <!-- PDFレンダリング(プレビュー用) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <!-- PDF.js テキストレイヤー用CSS -->
@@ -57,7 +57,7 @@
             border-radius: 4px;
             min-width: 40px;
             min-height: 24px;
-            white-space: pre-wrap; /* 画面上の折り返しを許可（修正ポイント） */
+            white-space: pre-wrap; /* 画面上の折り返しを許可 */
             word-wrap: break-word;
             transition: background 0.2s, border-color 0.2s;
         }
@@ -521,12 +521,12 @@
             textareas.forEach(t => {
                 t.textContent = t.value; 
                 // 出力計算用に画面上の実寸幅を記録
-                t.style.width = `${t.clientWidth}px`; 
+                t.style.width = `${t.clientWidth || 150}px`; 
             });
             pageAnnotations[currentPageNum] = layer.innerHTML;
         }
 
-        // 【修正ポイント】画面上の幅に合わせてテキストをPDF用の行配列に正確に分割する関数
+        // 画面上の幅に合わせてテキストをPDF用の行配列に正確に分割する関数
         function wrapTextForPDF(text, pdfMaxWidth, font, fontSize) {
             const lines = [];
             const paragraphs = text.split('\n'); // ユーザーの明示的な改行
@@ -565,8 +565,14 @@
             try {
                 const libDoc = await PDFLib.PDFDocument.load(pdfBytes);
                 
-                // 日本語フォントの読み込み (安定したCDNのURLに変更)
-                libDoc.registerFontkit(window.fontkit || fontkit);
+                // 【修正ポイント1】fontkitが正しく渡るように修正 (未定義エラー回避)
+                if (typeof window.fontkit !== 'undefined') {
+                    libDoc.registerFontkit(window.fontkit);
+                } else {
+                    throw new Error("フォントレンダリングエンジン(fontkit)の読み込みに失敗しています。");
+                }
+                
+                // 日本語フォントの読み込み
                 const fontUrl = 'https://cdn.jsdelivr.net/npm/@expo-google-fonts/noto-sans-jp@0.2.3/NotoSansJP_400Regular.ttf';
                 const fontRes = await fetch(fontUrl);
                 if (!fontRes.ok) throw new Error("フォントファイルの取得に失敗しました");
@@ -597,8 +603,10 @@
 
                     wrappers.forEach(wrapper => {
                         const textarea = wrapper.querySelector('textarea');
-                        const text = textarea.value || textarea.textContent;
-                        if (!text || !text.trim()) return;
+                        if (!textarea) return;
+                        
+                        const text = textarea.value || textarea.textContent || "";
+                        if (!text.trim()) return;
 
                         // 位置とスタイルの取得
                         const htmlLeft = parseFloat(wrapper.style.left) || 0;
@@ -616,20 +624,20 @@
                         const pdfX = actualHtmlX * scaleX;
                         const pdfFontSize = htmlFontSize * scaleY;
                         
-                        // HTML上の文字描画幅限界をPDFスケールに変換（枠からのはみ出し対策）
-                        const htmlMaxWidth = (parseFloat(textarea.style.width) || textarea.clientWidth) - paddingLeft - paddingRight;
+                        // 【修正ポイント2】計算不能な場合(NaN)に備えてフォールバック値(150)を用意
+                        const safeWidth = parseFloat(textarea.style.width) || 150;
+                        const htmlMaxWidth = safeWidth - paddingLeft - paddingRight;
                         const pdfMaxWidth = htmlMaxWidth * scaleX;
 
                         // テキストの自動折り返し計算
                         const wrappedLines = wrapTextForPDF(text, pdfMaxWidth, customFont, pdfFontSize);
 
-                        // 【修正ポイント】座標系の変換 (HTMLの左上原点 → PDFの左下原点)
-                        // ベースライン（文字の下端）のズレも補正して、文字が逆さまにならず正確な位置に出力されるようにする
+                        // 座標系の変換 (HTMLの左上原点 → PDFの左下原点)
                         const baselineOffset = pdfFontSize * 0.8; 
                         const pdfStartY = pdfHeight - (actualHtmlY * scaleY) - baselineOffset;
                         const pdfLineHeight = pdfFontSize * 1.5; 
 
-                        // 各行の描画 (Y座標をマイナスしていくことで下へ下へ描画される)
+                        // 各行の描画
                         wrappedLines.forEach((line, index) => {
                             page.drawText(line, {
                                 x: pdfX,
@@ -654,7 +662,7 @@
 
             } catch (error) {
                 console.error("PDF Export Error:", error);
-                alert("PDFの生成中にエラーが発生しました。\n詳細: " + error.message);
+                alert("PDFの生成中にエラーが発生しました。\n\n【詳細】\n" + error.message);
             } finally {
                 btn.innerHTML = origText;
                 btn.disabled = false;
