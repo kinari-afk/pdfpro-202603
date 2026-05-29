@@ -329,7 +329,7 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
         let currentMode = 'write';
-        let pdfBytes = null;
+        let currentFile = null;
         let pdfjsDoc = null;
         let currentPageNum = 1;
         
@@ -389,8 +389,9 @@
             if (file.type !== 'application/pdf') { alert('PDFファイルを選択してください。'); return; }
             if (currentMode !== 'write') { alert('現在プレビュー機能は「書き込みモード」でのみ動作します。タブを切り替えてください。'); return; }
             
+            currentFile = file;
+            
             const arrayBuffer = await file.arrayBuffer();
-            pdfBytes = arrayBuffer;
             
             // プレビューカラムの表示
             const previewColumn = document.getElementById('previewColumn');
@@ -554,7 +555,7 @@
         }
 
         async function exportPdf() {
-            if (!pdfBytes) return;
+            if (!currentFile) return;
             saveCurrentAnnotations();
             
             const btn = document.getElementById('exportBtn');
@@ -563,7 +564,9 @@
             btn.disabled = true;
 
             try {
-                const libDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                // 毎回新しいArrayBufferを取得してDetached ArrayBufferエラーを回避
+                const arrayBuffer = await currentFile.arrayBuffer();
+                const libDoc = await PDFLib.PDFDocument.load(arrayBuffer);
                 
                 // 【修正ポイント1】fontkitが正しく渡るように修正 (未定義エラー回避)
                 if (typeof window.fontkit !== 'undefined') {
