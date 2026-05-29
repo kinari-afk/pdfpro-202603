@@ -284,7 +284,7 @@
             </div>
             
             <!-- Right Column: Workspace / Preview (Hidden until file is selected) -->
-            <div id="previewColumn" class="hidden lg:col-span-8 flex-col space-y-4">
+            <div id="previewColumn" class="hidden lg:col-span-12 flex-col space-y-4">
                 
                 <!-- Toolbar for Write Mode -->
                 <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/60 flex justify-between items-center">
@@ -391,17 +391,6 @@
             
             const arrayBuffer = await file.arrayBuffer();
             pdfBytes = arrayBuffer;
-            
-            // レイアウトの変更（左カラムを縮小し、右にプレビューを表示）
-            document.getElementById('leftColumn').classList.remove('lg:col-span-12');
-            document.getElementById('leftColumn').classList.add('lg:col-span-4');
-            
-            // ActionCardのフレックス表示を解除して縦並びに
-            const actionCard = document.getElementById('mainActionCard');
-            actionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between');
-            actionCard.classList.add('flex-col');
-            document.getElementById('actionCardHeader').classList.remove('lg:w-1/4', 'lg:mb-0');
-            document.getElementById('actionCardHeader').classList.add('mb-4');
             
             // プレビューカラムの表示
             const previewColumn = document.getElementById('previewColumn');
