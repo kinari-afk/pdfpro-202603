@@ -133,8 +133,13 @@
         .textLayer {
             opacity: 1.0;
         }
+        .textLayer span {
+            color: transparent;
+            user-select: text;
+        }
         .textLayer ::selection {
             background: rgba(59, 130, 246, 0.3);
+            color: transparent;
         }
     </style>
 </head>
@@ -385,7 +390,7 @@
                 </div>
 
                 <!-- Visual Remove Area -->
-                <div id="remove-options" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
+                <div id="visualRemoveArea" class="hidden bg-white p-6 rounded-3xl shadow-sm border border-slate-200/60 animate-fadeIn">
                     <h3 class="text-base font-bold text-slate-800 mb-2">不要なページを削除</h3>
                     <p class="text-sm text-slate-500 mb-4 bg-red-50 text-red-800 p-3 rounded-lg border border-red-100">
                         クリックして、削除したいページ（赤枠）を選択してください。
@@ -656,7 +661,16 @@
                 radio.addEventListener('change', (e) => {
                     const val = e.target.value;
                     document.getElementById('splitRangeInputWrapper').classList.toggle('hidden', val !== 'range');
-                    document.getElementById('visualSplitArea').classList.toggle('hidden', val !== 'visual');
+                    
+                    const visualArea = document.getElementById('visualSplitArea');
+                    if (val === 'visual') {
+                        visualArea.classList.remove('hidden');
+                        if (files.length > 0 && document.getElementById('visualSplitContainer').innerHTML === '') {
+                            renderVisualSplitter();
+                        }
+                    } else {
+                        visualArea.classList.add('hidden');
+                    }
                 });
             });
 
@@ -822,18 +836,24 @@
             document.getElementById(`tab-${newMode}`).classList.add('active');
             
             document.getElementById('split-options').style.display = mode === 'split' ? 'block' : 'none';
-            document.getElementById('remove-options').style.display = mode === 'remove' ? 'block' : 'none';
             document.getElementById('nup-options').style.display = mode === 'nup' ? 'block' : 'none';
             document.getElementById('pdf2img-options').style.display = mode === 'pdf2img' ? 'block' : 'none';
             document.getElementById('compress-options').style.display = mode === 'compress' ? 'block' : 'none';
             
             const fileListPanel = document.getElementById('fileListPanel');
             const writeWorkspace = document.getElementById('writeWorkspace');
+            const visualSplitArea = document.getElementById('visualSplitArea');
+            const visualRemoveArea = document.getElementById('visualRemoveArea');
+            
             const leftCol = document.getElementById('leftColumn');
             const rightCol = document.getElementById('rightColumn');
             const mainActionCard = document.getElementById('mainActionCard');
             const dropZone = document.getElementById('dropZone');
             const actionButtons = document.getElementById('actionButtons');
+
+            // Hide specialized workspaces first
+            visualSplitArea.classList.add('hidden');
+            visualRemoveArea.classList.add('hidden');
 
             if (mode === 'write') {
                 fileListPanel.classList.add('hidden'); fileListPanel.classList.remove('flex');
@@ -851,6 +871,14 @@
                 mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between');
                 dropZone.classList.remove('lg:flex-1'); dropZone.classList.replace('p-4', 'p-8');
                 actionButtons.classList.remove('lg:w-64'); actionButtons.classList.add('mt-8', 'pt-6');
+                
+                // Show specialized area
+                if (mode === 'split') {
+                    const splitType = document.querySelector('input[name="splitType"]:checked').value;
+                    if (splitType === 'visual') visualSplitArea.classList.remove('hidden');
+                } else if (mode === 'remove') {
+                    visualRemoveArea.classList.remove('hidden');
+                }
             }
 
             document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
@@ -869,6 +897,8 @@
                 } else if (newMode === 'write' && files.length > 0) {
                     showLoading(true, "準備中...");
                     loadWritePdf(files[0].data).then(() => showLoading(false));
+                } else if (files.length > 0) {
+                    renderFileList();
                 }
             }
             updateStats();
@@ -919,7 +949,7 @@
 
         async function generatePdfPreview(buffer) {
             try {
-                const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+                const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
                 const page = await pdf.getPage(1);
                 const viewport = page.getViewport({ scale: 0.3 });
                 const canvas = document.createElement('canvas');
@@ -1023,7 +1053,7 @@
         async function loadWritePdf(arrayBuffer) {
             document.getElementById('pdfPageWrapper').classList.remove('hidden');
             document.getElementById('writeEmptyState').classList.add('hidden');
-            pdfDocProxy = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+            pdfDocProxy = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
             totalWritePages = pdfDocProxy.numPages;
             currentWritePage = 1; writeAnnotations = {}; pdfViewports = {};
             
@@ -1218,10 +1248,194 @@
         }
 
         // --- Visual Split & Remove Placeholders (Shortened) ---
-        async function renderVisualSplitter() {}
-        async function renderVisualRemover() {}
-        window.openPreviewModal = () => {};
-        window.closePreviewModal = () => {};
+        async function renderVisualSplitter() {
+            const container = document.getElementById('visualSplitContainer');
+            container.innerHTML = '';
+            visualSplitPoints.clear();
+
+            if (files.length === 0) return;
+            const pages = files[0].pages;
+
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = "text-sm text-slate-500 p-8 w-full text-center flex items-center justify-center";
+            loadingMsg.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent mr-3"></div>プレビューを生成中...';
+            container.appendChild(loadingMsg);
+
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(files[0].data) });
+                const pdf = await loadingTask.promise;
+                container.innerHTML = '';
+
+                for (let i = 1; i <= pages; i++) {
+                    const pageCard = document.createElement('div');
+                    pageCard.className = "w-32 h-44 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative transition-all overflow-hidden group";
+                    pageCard.innerHTML = `
+                        <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container p-1">
+                            <span class="text-[10px] font-bold text-slate-300">Loading...</span>
+                        </div>
+                        <span class="absolute top-1.5 left-1.5 bg-slate-800/80 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold rounded-md z-10 transition-opacity">P.${i}</span>
+                        
+                        <button class="preview-btn absolute top-1.5 right-1.5 bg-white/90 text-slate-600 hover:text-blue-600 p-1.5 rounded-lg shadow-sm z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-50" title="拡大プレビュー">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                        </button>
+                    `;
+                    container.appendChild(pageCard);
+                    
+                    pageCard.querySelector('.preview-btn').onclick = (e) => {
+                        e.stopPropagation();
+                        openPreviewModal(i, files[0]);
+                    };
+                    
+                    pdf.getPage(i).then(async (page) => {
+                        const viewport = page.getViewport({ scale: 0.4 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        
+                        const imgUrl = canvas.toDataURL();
+                        const previewContainer = pageCard.querySelector('.preview-container');
+                        previewContainer.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-full object-contain bg-white shadow-sm border border-slate-100 rounded">`;
+                        
+                        const f = files[0];
+                        if (f.rotation !== 0) previewContainer.querySelector('img').style.transform = `rotate(${f.rotation}deg)`;
+                    }).catch(err => {
+                        const previewContainer = pageCard.querySelector('.preview-container');
+                        previewContainer.innerHTML = `<span class="text-[10px] font-bold text-red-400">Error</span>`;
+                    });
+
+                    if (i < pages) {
+                        const splitWrapper = document.createElement('div');
+                        splitWrapper.className = "w-14 flex flex-col items-center justify-center group cursor-pointer shrink-0 mx-1";
+                        
+                        const lineTop = document.createElement('div');
+                        lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                        
+                        const iconBtn = document.createElement('div');
+                        iconBtn.className = "w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
+                        iconBtn.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:-rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" /></svg>
+                        `;
+                        
+                        const lineBottom = document.createElement('div');
+                        lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+
+                        splitWrapper.appendChild(lineTop);
+                        splitWrapper.appendChild(iconBtn);
+                        splitWrapper.appendChild(lineBottom);
+
+                        splitWrapper.onclick = () => {
+                            const isCut = visualSplitPoints.has(i);
+                            if (isCut) {
+                                visualSplitPoints.delete(i);
+                                lineTop.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                                lineBottom.className = "flex-grow border-l-2 border-dashed border-slate-300 group-hover:border-blue-400 transition-colors w-0";
+                                iconBtn.className = "w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-blue-500 group-hover:border-blue-500 transition-all my-1 z-10 shadow-sm";
+                            } else {
+                                visualSplitPoints.add(i);
+                                lineTop.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
+                                lineBottom.className = "flex-grow border-l-2 border-solid border-red-400 transition-colors w-0";
+                                iconBtn.className = "w-10 h-10 rounded-full bg-red-500 border border-red-500 flex items-center justify-center text-white transition-all my-1 z-10 shadow-md transform scale-110";
+                            }
+                        };
+
+                        container.appendChild(splitWrapper);
+                    }
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="w-full text-center p-4"><span class="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">プレビューの生成に失敗しました。</span></div>';
+            }
+        }
+        
+        async function renderVisualRemover() {
+            const container = document.getElementById('visualRemoveContainer');
+            container.innerHTML = '';
+            visualRemovePoints.clear();
+
+            if (files.length === 0) return;
+            const pages = files[0].pages;
+            
+            const loadingMsg = document.createElement('div');
+            loadingMsg.className = "text-sm text-slate-500 p-8 w-full text-center flex items-center justify-center";
+            loadingMsg.innerHTML = '<div class="inline-block animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent mr-3"></div>プレビューを生成中...';
+            container.appendChild(loadingMsg);
+
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(files[0].data) });
+                const pdf = await loadingTask.promise;
+                container.innerHTML = '';
+
+                for (let i = 1; i <= pages; i++) {
+                    const pageWrapper = document.createElement('div');
+                    pageWrapper.className = "w-[120px] h-[168px] bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-center shrink-0 relative cursor-pointer hover:shadow-md hover:border-slate-300 transition-all overflow-hidden group";
+                    
+                    pageWrapper.innerHTML = `
+                        <div class="absolute inset-0 flex items-center justify-center bg-slate-50 z-0 preview-container p-1">
+                            <span class="text-[10px] font-bold text-slate-300">Loading...</span>
+                        </div>
+                        <span class="absolute top-1.5 left-1.5 bg-slate-800/80 backdrop-blur text-white px-2 py-0.5 text-[10px] font-bold rounded-md z-10 transition-opacity">P.${i}</span>
+                        
+                        <button class="preview-btn absolute top-1.5 right-1.5 bg-white/90 text-slate-600 hover:text-blue-600 p-1.5 rounded-lg shadow-sm z-30 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-50" title="拡大プレビュー">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
+                        </button>
+                        
+                        <div class="overlay hidden absolute inset-0 border-4 border-red-500 bg-red-500/20 flex items-center justify-center z-20 transition-all pointer-events-none rounded-xl">
+                            <div class="bg-white/90 rounded-full p-2 shadow-lg transform scale-110">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </div>
+                        </div>
+                        <div class="hover-indicator absolute inset-0 bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
+                    `;
+                    
+                    pageWrapper.onclick = () => {
+                        const overlay = pageWrapper.querySelector('.overlay');
+                        if (visualRemovePoints.has(i)) {
+                            visualRemovePoints.delete(i);
+                            overlay.classList.add('hidden');
+                        } else {
+                            visualRemovePoints.add(i);
+                            overlay.classList.remove('hidden');
+                        }
+                    };
+
+                    pageWrapper.querySelector('.preview-btn').onclick = (e) => {
+                        e.stopPropagation(); 
+                        openPreviewModal(i, files[0]);
+                    };
+
+                    container.appendChild(pageWrapper);
+
+                    pdf.getPage(i).then(async (page) => {
+                        const viewport = page.getViewport({ scale: 0.35 });
+                        const canvas = document.createElement('canvas');
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                        
+                        const imgUrl = canvas.toDataURL();
+                        const previewContainer = pageWrapper.querySelector('.preview-container');
+                        previewContainer.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-full object-contain bg-white shadow-sm border border-slate-100 rounded">`;
+                        
+                        const f = files[0];
+                        if (f.rotation !== 0) previewContainer.querySelector('img').style.transform = `rotate(${f.rotation}deg)`;
+                    }).catch(err => {
+                        const previewContainer = pageWrapper.querySelector('.preview-container');
+                        previewContainer.innerHTML = `<span class="text-[10px] font-bold text-red-400">Error</span>`;
+                    });
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="w-full text-center p-4"><span class="text-sm text-red-500 bg-red-50 px-4 py-2 rounded-lg">プレビューの生成に失敗しました。</span></div>';
+            }
+        }
+        
+        window.closePreviewModal = () => {
+            const modal = document.getElementById('previewModal');
+            modal.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => { modal.style.display = 'none'; }, 300);
+        };
+        window.openPreviewModal = openPreviewModal;
 
         // --- Processing Helpers ---
         function showLoading(show, text = "処理中...") {
@@ -1233,8 +1447,8 @@
         function showToast(msg) {
             const t = document.getElementById('toast');
             document.getElementById('toastMsg').textContent = msg;
-            t.classList.remove('opacity-0');
-            setTimeout(() => t.classList.add('opacity-0'), 3000);
+            t.classList.remove('opacity-0', 'translate-y-4');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-4'), 3000);
         }
 
         function showResult(msg, filename) {
@@ -1245,6 +1459,9 @@
                 const a = document.createElement('a'); a.href = url; a.download = filename;
                 document.body.appendChild(a); a.click(); document.body.removeChild(a);
             };
+            setTimeout(() => {
+                document.getElementById('resultArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
         }
 
         // --- 日本語の折り返し処理 ---
