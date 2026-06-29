@@ -949,7 +949,7 @@
 
         async function generatePdfPreview(buffer) {
             try {
-                const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(buffer) }).promise;
+                const pdf = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
                 const page = await pdf.getPage(1);
                 const viewport = page.getViewport({ scale: 0.3 });
                 const canvas = document.createElement('canvas');
@@ -1053,7 +1053,7 @@
         async function loadWritePdf(arrayBuffer) {
             document.getElementById('pdfPageWrapper').classList.remove('hidden');
             document.getElementById('writeEmptyState').classList.add('hidden');
-            pdfDocProxy = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+            pdfDocProxy = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
             totalWritePages = pdfDocProxy.numPages;
             currentWritePage = 1; writeAnnotations = {}; pdfViewports = {};
             
@@ -1247,7 +1247,6 @@
             }
         }
 
-        // --- Visual Split & Remove Placeholders (Shortened) ---
         async function renderVisualSplitter() {
             const container = document.getElementById('visualSplitContainer');
             container.innerHTML = '';
@@ -1262,7 +1261,7 @@
             container.appendChild(loadingMsg);
 
             try {
-                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(files[0].data) });
+                const loadingTask = pdfjsLib.getDocument({ data: files[0].data.slice(0) });
                 const pdf = await loadingTask.promise;
                 container.innerHTML = '';
 
@@ -1362,7 +1361,7 @@
             container.appendChild(loadingMsg);
 
             try {
-                const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(files[0].data) });
+                const loadingTask = pdfjsLib.getDocument({ data: files[0].data.slice(0) });
                 const pdf = await loadingTask.promise;
                 container.innerHTML = '';
 
@@ -1430,6 +1429,38 @@
             }
         }
         
+        async function openPreviewModal(pageNum, fileObj) {
+            const modal = document.getElementById('previewModal');
+            const title = document.getElementById('previewModalTitle');
+            const content = document.getElementById('previewModalContent');
+            
+            title.textContent = `ページ ${pageNum} のプレビュー`;
+            content.innerHTML = '<div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent my-10 mx-auto"></div>';
+            
+            modal.style.display = 'flex';
+            void modal.offsetWidth; 
+            modal.classList.replace('opacity-0', 'opacity-100');
+
+            try {
+                const loadingTask = pdfjsLib.getDocument({ data: fileObj.data.slice(0) });
+                const pdf = await loadingTask.promise;
+                const page = await pdf.getPage(pageNum);
+                
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                
+                const imgUrl = canvas.toDataURL();
+                content.innerHTML = `<img src="${imgUrl}" class="max-w-full max-h-[75vh] object-contain shadow-sm border border-slate-200 bg-white" style="transform: rotate(${fileObj.rotation}deg)">`;
+                
+            } catch (err) {
+                content.innerHTML = '<span class="text-red-500 font-bold">プレビューの読み込みに失敗しました。</span>';
+            }
+        }
+
         window.closePreviewModal = () => {
             const modal = document.getElementById('previewModal');
             modal.classList.replace('opacity-100', 'opacity-0');
@@ -1521,9 +1552,7 @@
                 else if (mode === 'compress') await processCompress();
             } catch (e) { 
                 console.error(e);
-                if (!['No points selected', 'Invalid range', 'All pages removed'].includes(e.message)) {
-                    showToast("エラーが発生しました: " + (e.message || "")); 
-                }
+                showToast(e.message || "エラーが発生しました"); 
             }
             showLoading(false);
         };
@@ -1838,7 +1867,7 @@
             const total = sourceDoc.getPageCount();
             
             if (visualRemovePoints.size === total) {
-                throw new Error('All pages removed');
+                throw new Error('少なくとも1ページは残す必要があります。');
             }
             if (visualRemovePoints.size === 0) {
                 throw new Error('削除するページが選択されていません。');
