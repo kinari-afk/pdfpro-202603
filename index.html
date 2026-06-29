@@ -842,43 +842,33 @@
             
             const fileListPanel = document.getElementById('fileListPanel');
             const writeWorkspace = document.getElementById('writeWorkspace');
-            const visualSplitArea = document.getElementById('visualSplitArea');
-            const visualRemoveArea = document.getElementById('visualRemoveArea');
-            
             const leftCol = document.getElementById('leftColumn');
             const rightCol = document.getElementById('rightColumn');
             const mainActionCard = document.getElementById('mainActionCard');
             const dropZone = document.getElementById('dropZone');
             const actionButtons = document.getElementById('actionButtons');
-
-            // Hide specialized workspaces first
-            visualSplitArea.classList.add('hidden');
-            visualRemoveArea.classList.add('hidden');
+            const actionCardHeader = document.getElementById('actionCardHeader');
 
             if (mode === 'write') {
                 fileListPanel.classList.add('hidden'); fileListPanel.classList.remove('flex');
                 writeWorkspace.classList.remove('hidden'); writeWorkspace.classList.add('flex');
                 leftCol.classList.remove('lg:col-span-4'); leftCol.classList.add('lg:col-span-12');
                 rightCol.classList.remove('lg:col-span-8'); rightCol.classList.add('lg:col-span-12');
-                mainActionCard.classList.add('lg:flex', 'lg:items-center', 'lg:justify-between');
-                dropZone.classList.add('lg:flex-1'); dropZone.classList.replace('p-8', 'p-4'); 
-                actionButtons.classList.add('lg:w-64'); actionButtons.classList.remove('mt-8', 'pt-6');
+                
+                mainActionCard.classList.add('lg:flex', 'lg:items-center', 'lg:justify-between', 'lg:gap-8');
+                actionCardHeader.classList.add('lg:w-1/4', 'lg:mb-0');
+                dropZone.classList.add('lg:flex-1', 'lg:mb-0'); dropZone.classList.replace('p-8', 'p-4'); 
+                actionButtons.classList.add('lg:w-64', 'lg:mt-0', 'lg:pt-0', 'lg:border-t-0'); actionButtons.classList.remove('mt-8', 'pt-6');
             } else {
                 fileListPanel.classList.remove('hidden'); fileListPanel.classList.add('flex');
                 writeWorkspace.classList.add('hidden'); writeWorkspace.classList.remove('flex');
                 leftCol.classList.add('lg:col-span-4'); leftCol.classList.remove('lg:col-span-12');
                 rightCol.classList.add('lg:col-span-8'); rightCol.classList.remove('lg:col-span-12');
-                mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between');
-                dropZone.classList.remove('lg:flex-1'); dropZone.classList.replace('p-4', 'p-8');
-                actionButtons.classList.remove('lg:w-64'); actionButtons.classList.add('mt-8', 'pt-6');
                 
-                // Show specialized area
-                if (mode === 'split') {
-                    const splitType = document.querySelector('input[name="splitType"]:checked').value;
-                    if (splitType === 'visual') visualSplitArea.classList.remove('hidden');
-                } else if (mode === 'remove') {
-                    visualRemoveArea.classList.remove('hidden');
-                }
+                mainActionCard.classList.remove('lg:flex', 'lg:items-center', 'lg:justify-between', 'lg:gap-8');
+                actionCardHeader.classList.remove('lg:w-1/4', 'lg:mb-0');
+                dropZone.classList.remove('lg:flex-1', 'lg:mb-0'); dropZone.classList.replace('p-4', 'p-8');
+                actionButtons.classList.remove('lg:w-64', 'lg:mt-0', 'lg:pt-0', 'lg:border-t-0'); actionButtons.classList.add('mt-8', 'pt-6');
             }
 
             document.getElementById('accept-label').textContent = mode === 'img2pdf' ? '画像ファイル (JPG/PNG)' : 'PDFファイル';
@@ -1609,7 +1599,9 @@
                 const unscaledViewport = pdfViewports[pNum];
                 if (!unscaledViewport) continue;
                 
+                // 回転を考慮したページ全体の幅と高さ
                 let vw = pw, vh = ph;
+                // 注意: PDFの回転角が90/270度の場合、幅と高さが入れ替わる
                 if (rot === 90 || rot === 270) {
                     vw = ph; vh = pw;
                 }
@@ -1621,31 +1613,27 @@
                     if (!ann.text.trim()) return;
                     
                     const ptSize = ann.fontSize * scaleY;
-                    const vx = (ann.x + 6) * scaleX;
-                    const vy = (ann.y + 4) * scaleY;
                     const maxWidth = Math.max(1, (ann.width - 12) * scaleX);
 
                     const selectedFont = customFonts[ann.fontFamily || 'gothic'];
                     const wrappedText = wrapText(ann.text, maxWidth, selectedFont, ptSize);
 
-                    const px = vx;
-                    const py = vh - (vy + ptSize * 0.8);
+                    // 1. 基本座標 (回転なしの状態)
+                    const x = (ann.x + 6) * scaleX;
+                    const y = vh - ((ann.y + 4) * scaleY) - (ptSize * 0.8);
 
+                    // 2. 回転を考慮したPDF座標への変換
                     let pdfX, pdfY;
-                    let drawRot = -rot;
+                    let drawRot = -rot; // drawText用の回転角はマイナス値
 
                     if (rot === 0) {
-                        pdfX = px;
-                        pdfY = py;
+                        pdfX = x; pdfY = y;
                     } else if (rot === 90) {
-                        pdfX = pw - py;
-                        pdfY = px;
+                        pdfX = pw - y; pdfY = x;
                     } else if (rot === 180) {
-                        pdfX = pw - px;
-                        pdfY = ph - py;
+                        pdfX = pw - x; pdfY = ph - (vh - y);
                     } else if (rot === 270) {
-                        pdfX = py;
-                        pdfY = ph - px;
+                        pdfX = y; pdfY = ph - x;
                     }
                     
                     const r = parseInt(ann.color.slice(1, 3), 16) / 255;
