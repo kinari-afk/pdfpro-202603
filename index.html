@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -1624,14 +1625,17 @@
 
                     // 2. 回転を考慮したPDF座標への変換
                     let pdfX, pdfY;
-                    let drawRot = -rot; // drawText用の回転角はマイナス値
+                    // ▼修正: PDFの /Rotate（時計回り）を打ち消すため、文字の回転角はページ回転と「同じ符号」にする。
+                    //   以前は -rot にしていたため、90/270度のページで文字が180度反転していた。
+                    let drawRot = rot;
 
                     if (rot === 0) {
                         pdfX = x; pdfY = y;
                     } else if (rot === 90) {
                         pdfX = pw - y; pdfY = x;
                     } else if (rot === 180) {
-                        pdfX = pw - x; pdfY = ph - (vh - y);
+                        // ▼修正: 以前は ph - (vh - y) としていたが vh===ph のため実質 y となり、上下位置が逆だった。
+                        pdfX = pw - x; pdfY = ph - y;
                     } else if (rot === 270) {
                         pdfX = y; pdfY = ph - x;
                     }
