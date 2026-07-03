@@ -1619,9 +1619,19 @@
                     const selectedFont = customFonts[ann.fontFamily || 'gothic'];
                     const wrappedText = wrapText(ann.text, maxWidth, selectedFont, ptSize);
 
-                    // 1. 基本座標 (回転なしの状態)
-                    const x = (ann.x + 6) * scaleX;
-                    const y = vh - ((ann.y + 4) * scaleY) - (ptSize * 0.8);
+                    // 1. 基本座標 (回転なしの状態) ― 画面のtextareaと出力位置を一致させる
+                    //   (a) padding(左6px / 上4px)は「画面ピクセル」なので、拡大率で割って無回転座標へ戻す
+                    //       （以前は 6/4 を無回転単位のまま加算していたため、100%以外のズームで横に少しずれていた）
+                    //   (b) CSSの line-height:1.5 では、1行目の文字がボックス上端から
+                    //       half-leading(=0.25em) ぶん下がって表示される。以前はこれが抜けており、
+                    //       文字上端→ベースライン(約0.8em)ぶんしか下げていなかったため、出力が上に約0.25emずれていた。
+                    //       正しくは half-leading(0.25em) + ascent(約0.8em) = 1.05em 下げる。
+                    const padX = (6 / writeCurrentScale) * scaleX;
+                    const padY = (4 / writeCurrentScale) * scaleY;
+                    const baselineOffset = ptSize * (0.25 + 0.8); // half-leading + ascent
+
+                    const x = ann.x * scaleX + padX;
+                    const y = vh - (ann.y * scaleY + padY) - baselineOffset;
 
                     // 2. 回転を考慮したPDF座標への変換
                     let pdfX, pdfY;
